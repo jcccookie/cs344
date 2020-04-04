@@ -1,0 +1,57 @@
+#!/bin/bash
+function generate(){
+  # NAME
+  #   generate - generate a matrix of a specified size
+  # SYNOPSIS
+  #   generate ROWS COLS RANGE
+  # DESCRIPTION
+  #   Outputs a matrix with ROWS and COLS as dimensions. If RANGE is an integer, the entries
+  #   of the matrix will be random integers in (-RANGE,+RANGE). If RANGE is a string starting
+  #   with 'Z' or 'z', the matrix will be populated with zeroes. If RANGE is a string starting
+  #   with 'O' or 'o', the matrix will be populated with ones. If RANGE is a string starting
+  #   with 'D' or 'd', the matrix will be a diagonal matrix with ones along the diagonal entries.
+  # AUTHOR
+  #   Written by Ryan Gambord (gambordr@oregonstate.edu)
+
+  [ $# -ne 3 ] && echo "invalid number of arguments" >&2      # This is equivalent to using an if statement.
+   # $# is the number of arguments                            # The right side of the && operator will not
+                                                              # be evaluated unless the left side is true.
+  for arg in $1 $2 # $1 is the number of rows, $2 is the number of columns
+  do
+    # check if the rows and columns are integers
+    [[ $arg =~ [^0-9]+ ]] && echo "argument '$arg' is not an integer" >&2
+    # [[  =~ ]]  is regex match
+    # + matches 1 or more
+  done
+
+  y=0
+  while [ $y -lt $1 ]
+  # -lt is less than
+  do
+    x=0
+    ((y++))
+    while [ $x -lt $2 ]
+    do
+      ((x++))
+      case $3 in
+        [oO]*) echo -n 1;; # if RANGE is starting with o or O, populated with 1
+        [zZ]*) echo -n 0;; # if RANGE is starting with z or Z, populated with 0
+        [dD]*) [ $x -eq $y ] && echo -n 1 || echo -n 0;;
+        *) if [[ "$3" =~ [^0-9]+ ]]
+             then
+               echo "invalid RANGE" >&2
+               exit 1
+             else
+               echo -n $(( (RANDOM - 32767 / 2) % $3 ))
+             fi;;
+      esac
+      if [ $x -ne $2 ]
+      then
+        echo -ne "\t" # keep printing numbers till row is ended
+      else
+        echo # add a new line when the row is ended.
+      fi
+    done
+  done
+}
+generate $1 $2 $3

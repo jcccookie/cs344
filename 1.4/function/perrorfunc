@@ -1,0 +1,55 @@
+#!/bin/bash
+function perror(){
+  # NAME
+  #   perror - print a stack trace and error message
+  # SYNOPSIS
+  #   perror [STRING]
+  # DESCRIPTION
+  #   Echoes the STRING(s) to standard error with a stack trace for debugging.
+  #   The value of the status flag $? is not changed by perror.
+  # AUTHOR
+  #   Written by Ryan Gambord (gambordr@oregonstate.edu)
+
+  status=$? # Capture status of previous command 
+  echo -e "\e[36mTraceback (most recent call last):\e[0m" >&2
+  i=${#BASH_LINENO[@]} # Get number of items in stack trace
+
+  # This section prints a stack trace of the current execution stack
+  while 
+    [ $i -gt 0 ] # Iterate to the top of the stack
+  do
+    until # Loop until we get to the bottom of caller stack (this is safer than offsetting $i)
+      ((i--))
+      info=($(caller $i)) # Get caller info
+    do :; done # Do nothing
+  
+    echo "  File \"${info[2]}\", line ${info[0]}, in ${info[1]}()" >&2 # Print caller info
+    if [ $i -ne 0 ] # Check if we're at the top of the stack (perror call is at top)
+    then
+      echo "    "$(head "${info[2]}" -n ${info[0]} | tail -n 1) >&2 # Print trace if not at top
+    else
+      echo -en "\e[31mERROR\e[0m: " >&2 # Print error message if at top
+      [ $# -gt 0 ] && echo "$*" >&2 || echo "(no error message specified)" >&2
+    fi
+  done
+  return $status
+}
+# Test an error
+echo "Adding two numbers:"
+NUMBER=$(expr 1 + two)
+if test $? -ne 0
+then
+ perror "sum"
+else
+ echo $NUMBER
+fi
+# Do it the right way
+echo
+echo "Adding two numbers:"
+NUMBER=$(expr 1 + 2)
+if test $? -ne 0
+then
+ perror "sum"
+else
+ echo $NUMBER
+fi

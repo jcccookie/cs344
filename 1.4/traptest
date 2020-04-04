@@ -1,0 +1,12 @@
+#!/bin/sh
+echo "Creating temporary file..."
+TMP="tempcolfile"
+trap "rm -f $TMP; echo 'SIGINT received: Deleting temp file then existing!'; exit 1" INT
+echo "FILE CONTENTS." > $TMP
+echo "Temp file name is $TMP and contains the contents:"
+cat $TMP
+while [ 1 -ne 2 ]
+do
+	echo "Never ending loop - hit CTRL_C to exit!"
+	sleep 1
+done

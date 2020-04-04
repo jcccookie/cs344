@@ -1,0 +1,6 @@
+#!/bin/bash
+echo "A: This script is sending this text to stdout"
+echo "B: This script is sending this text to stdout" >>/dev/stdout
+echo "C: This script is sending this text to stderr" 1>&2
+echo "D: This script is sending this text to stderr" 1>&2
+echo "E: This script is sending this text to stderr" >>/dev/stderr

@@ -1,0 +1,57 @@
+#!/bin/bash
+
+function dims(){
+[ $# -ne 0 ] && [ $# -ne 1 ] && echo "You have more than 1 argument. This is INVALID!!" >&2
+# Choose the type of argument between file and stdin
+datafilepath="datafile$$"
+if [ $# = 0 ] # If type of input is stdin
+then
+    cat > $datafilepath
+elif [ $# = 1 ] # If type of input is file
+then
+    while read myLine
+    do
+        echo "$myLine" >> $datafilepath
+    done < $1 
+fi
+
+#cat -A $datafilepath
+#cat $datafilepath
+
+# Process:
+# Traverse all rows and columns of matrix.
+# Increment rowNum and colNum for every row and column.
+# Need to divide colNum by rowNum to get correct number of column.
+rowNum=0 # number of rows
+colNum=0 # number of columns
+while read myLine
+do
+rowNum=`expr $rowNum + 1`
+    for i in $myLine
+    do
+        colNum=`expr $colNum + 1`
+    done
+done < $datafilepath
+
+colNum=`expr $colNum / $rowNum`
+echo "$rowNum $colNum"
+
+# Delete a temp file
+rm -f $datafilepath
+
+return 0
+}
+
+
+
+function transpose(){
+
+echo "func transpose called"
+
+}
+
+
+
+# Main program starts from here
+$1 "${@:2}"
+
