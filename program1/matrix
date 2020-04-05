@@ -5,6 +5,7 @@ function dtmInputChecker(){
   # SYNOPSIS
   #   dtmInputChecker TEMPFILE MATRIX
   # DESCRIPTION
+  #   Input checker for dims, transpose, and mean functions.
   #   Store data in matrix file to temp file.
   #   If function takes in no matrix file, let user type a matrix.
   #   If function takes in a matrix file, read a file and store data to temp file.
@@ -24,11 +25,8 @@ then
         echo "$2 does NOT EXIST!!" >&2 # File is not readable. Error to stderr and return 1.
         return 1
     fi
-    # Read a valid file
-    while read myLine # read a file and store data to temp file.
-    do
-        echo "$myLine" >> "$1"
-    done < "$2" # Read the first argument which is a file.
+    # Read a valid file and store data to temp file.
+    cat "$2" > "$1"
 else # If number of arguments is more than 1 (invalid), error to stderr and return 1.
     echo "You have more than 1 argument. This is INVALID!!" >&2
     return 1
@@ -46,34 +44,23 @@ function dims(){
   # AUTHOR
   #   Written by Kyeong-nam Kim
 
-# Choose the type of argument between file and stdin.
-datafilepath="datafile$$" # Temp file to store data.
+# Temp file to store input data.
+datafilepath="datafile$$" 
 
 # Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
 trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+
+# Execute input checking function
 dtmInputChecker "$datafilepath" "${@:1}"
 
 if [ $? -eq 1 ]
 then
     return 1
 else
-    # Process:
-    # Traverse all rows and columns of matrix.
-    # Increment rowNum and colNum for every row and column, respectively.
-    # Need to divide colNum by rowNum to get correct number of column.
-    rowNum=0 # number of rows.
-    colNum=0 # number of columns. 
+    rowNum=$(wc -l <"$datafilepath") # Count number of lines of input file.
+    firstline=$(head -n 1 "$datafilepath") # variable for first line of input file.
+    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line.
 
-    while read myLine # Read data from the temp file, 'datafilepath'.
-    do
-    rowNum=`expr $rowNum + 1` # Increment number of row.
-        for i in $myLine # Read every value in a row.
-        do
-	    colNum=`expr $colNum + 1` # Increment number of column.
-        done
-    done < "$datafilepath" # Read a temp file.
-
-    colNum=`expr $colNum / $rowNum` # Divide number of column by number of row.
     echo "$rowNum $colNum" # Print out result.
 
     rm -f "$datafilepath" # Delete a temp file
@@ -82,11 +69,41 @@ else
 fi
 }
 
-
 function transpose(){
 
-echo "func transpose called"
+  # NAME
+  #   transpose - 
+  # SYNOPSIS
+  #   transpose MATRIX
+  # DESCRIPTION
+  #   O
+  #   P
+  # AUTHOR
+  #   Written by Kyeong-nam Kim
 
+# Temp file to store input data.
+datafilepath="datafile$$" 
+
+# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+
+# Execute input checking function
+dtmInputChecker "$datafilepath" "${@:1}"
+
+if [ $? -eq 1 ]
+then
+    return 1
+else
+    # Process:
+    # 
+    # 
+    # 
+
+
+    rm -f "$datafilepath" # Delete a temp file
+
+    return 0 # Return 0, which means the input is valid.
+fi
 }
 
 # Main program starts from here
