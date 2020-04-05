@@ -1,11 +1,46 @@
-#!/bin/bash
+#!/bin/bash 
+function dtmInputChecker(){ 
+  # NAME
+  #   dtmInputChecker - Process matrix input and save data to temp file, or catch an error if input is invalid.
+  # SYNOPSIS
+  #   dtmInputChecker TEMPFILE MATRIX
+  # DESCRIPTION
+  #   Store data in matrix file to temp file.
+  #   If function takes in no matrix file, let user type a matrix.
+  #   If function takes in a matrix file, read a file and store data to temp file.
+  #   If matrix file is not readable or number of arguments of matrix file is greater than 1, catch error and return 1.
+  # AUTHOR
+  #   Written by Kyeong-nam Kim
+if [ "$#" = "1" ] # If input type is stdin, 
+then
+    cat > "$1" # let user type a matrix and store data to a temp file.
+elif [ "$#" = "2" ] # If input type is file, 
+then
+    # Check if input file is readable
+    if [ -f "$2" ] # Read a file 
+    then
+        echo "$2 exists" >/dev/null # Yes, file readable. Do nothing.
+    else
+        echo "$2 does NOT EXIST!!" >&2 # File is not readable. Error to stderr and return 1.
+        return 1
+    fi
+    # Read a valid file
+    while read myLine # read a file and store data to temp file.
+    do
+        echo "$myLine" >> "$1"
+    done < "$2" # Read the first argument which is a file.
+else # If number of arguments is more than 1 (invalid), error to stderr and return 1.
+    echo "You have more than 1 argument. This is INVALID!!" >&2
+    return 1
+fi
+}
 
 function dims(){
   # NAME
   #   dims - Outputs dimensions of a matrix
   # SYNOPSIS
   #   dims MATRIX
-  # DESCRIPSION
+  # DESCRIPTION
   #   Outputs dimensions of a matrix.
   #   Prints "ROWS COLS" to stdout.
   # AUTHOR
@@ -13,52 +48,38 @@ function dims(){
 
 # Choose the type of argument between file and stdin.
 datafilepath="datafile$$" # Temp file to store data.
-if [ "$#" = "0" ] # If input type is stdin, 
+
+# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+dtmInputChecker "$datafilepath" "${@:1}"
+
+if [ $? -eq 1 ]
 then
-    cat > "$datafilepath" # let user type a matrix and store data to a temp file.
-elif [ "$#" = "1" ] # If input type is file, 
-then
-    # Check if input file is readable
-    if [ -f "$1" ] # Read a file 
-    then
-        echo "$1 exists" >/dev/null # Yes, file readable. Do nothing.
-    else
-        echo "$1 does NOT EXIST!!" >&2 # File is not readable. Error to stderr and return 1.
-        return 1
-    fi
-    # Read a valid file
-    while read myLine # read a file and store data to temp file.
-    do
-        echo "$myLine" >> $datafilepath
-    done < $1 # Read the first argument which is a file.
-else # If number of arguments is more than 1 (invalid), error to stderr and return 1.
-    echo "You have more than 1 argument. This is INVALID!!" >&2
     return 1
-fi
+else
+    # Process:
+    # Traverse all rows and columns of matrix.
+    # Increment rowNum and colNum for every row and column, respectively.
+    # Need to divide colNum by rowNum to get correct number of column.
+    rowNum=0 # number of rows.
+    colNum=0 # number of columns. 
 
-# Process:
-# Traverse all rows and columns of matrix.
-# Increment rowNum and colNum for every row and column, respectively.
-# Need to divide colNum by rowNum to get correct number of column.
-
-rowNum=0 # number of rows.
-colNum=0 # number of columns. 
-
-while read myLine # Read data from the temp file, 'datafilepath'.
-do
-rowNum=`expr $rowNum + 1` # Increment number of row.
-    for i in $myLine # Read every value in a row.
+    while read myLine # Read data from the temp file, 'datafilepath'.
     do
-        colNum=`expr $colNum + 1` # Increment number of column.
-    done
-done < $datafilepath # Read a temp file.
+    rowNum=`expr $rowNum + 1` # Increment number of row.
+        for i in $myLine # Read every value in a row.
+        do
+	    colNum=`expr $colNum + 1` # Increment number of column.
+        done
+    done < "$datafilepath" # Read a temp file.
 
-colNum=`expr $colNum / $rowNum` # Divide number of column by number of row.
-echo "$rowNum $colNum" # Print out result.
+    colNum=`expr $colNum / $rowNum` # Divide number of column by number of row.
+    echo "$rowNum $colNum" # Print out result.
 
-rm -f $datafilepath # Delete a temp file
+    rm -f "$datafilepath" # Delete a temp file
 
-return 0 # Return 0, which means the input is valid.
+    return 0 # Return 0, which means the input is valid.
+fi
 }
 
 
