@@ -40,30 +40,34 @@ function dims(){
 datafilepath="datafile$$" # Temp file to store data.
 
 dtmError "$datafilepath" "${@:1}"
-echo "status value: $?"
-# Process:
-# Traverse all rows and columns of matrix.
-# Increment rowNum and colNum for every row and column, respectively.
-# Need to divide colNum by rowNum to get correct number of column.
 
-rowNum=0 # number of rows.
-colNum=0 # number of columns. 
+if [ $? -eq 1 ]
+then
+    return 1
+else
+    # Process:
+    # Traverse all rows and columns of matrix.
+    # Increment rowNum and colNum for every row and column, respectively.
+    # Need to divide colNum by rowNum to get correct number of column.
+    rowNum=0 # number of rows.
+    colNum=0 # number of columns. 
 
-while read myLine # Read data from the temp file, 'datafilepath'.
-do
-rowNum=`expr $rowNum + 1` # Increment number of row.
-    for i in $myLine # Read every value in a row.
+    while read myLine # Read data from the temp file, 'datafilepath'.
     do
-        colNum=`expr $colNum + 1` # Increment number of column.
-    done
-done < "$datafilepath" # Read a temp file.
+    rowNum=`expr $rowNum + 1` # Increment number of row.
+        for i in $myLine # Read every value in a row.
+        do
+	    colNum=`expr $colNum + 1` # Increment number of column.
+        done
+    done < "$datafilepath" # Read a temp file.
 
-colNum=`expr $colNum / $rowNum` # Divide number of column by number of row.
-echo "$rowNum $colNum" # Print out result.
+    colNum=`expr $colNum / $rowNum` # Divide number of column by number of row.
+    echo "$rowNum $colNum" # Print out result.
 
-rm -f "$datafilepath" # Delete a temp file
+    rm -f "$datafilepath" # Delete a temp file
 
-return 0 # Return 0, which means the input is valid.
+    return 0 # Return 0, which means the input is valid.
+fi
 }
 
 
