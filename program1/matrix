@@ -1,47 +1,66 @@
 #!/bin/bash
 
 function dims(){
-[ $# -ne 0 ] && [ $# -ne 1 ] && echo "You have more than 1 argument. This is INVALID!!" >&2
-# Choose the type of argument between file and stdin
-datafilepath="datafile$$"
-if [ $# = 0 ] # If type of input is stdin
+  # NAME
+  #   dims - Outputs dimensions of a matrix
+  # SYNOPSIS
+  #   dims MATRIX
+  # DESCRIPSION
+  #   Outputs dimensions of a matrix.
+  #   Prints "ROWS COLS" to stdout.
+  # AUTHOR
+  #   Written by Kyeong-nam Kim
+
+# Choose the type of argument between file and stdin.
+datafilepath="datafile$$" # Temp file to store data.
+if [ $# = 0 ] # If type of input is stdin, 
 then
-    cat > $datafilepath
-elif [ $# = 1 ] # If type of input is file
+    cat > $datafilepath # let user type a matrix and store data to a temp file.
+elif [ $# = 1 ] # If type of input is file, 
 then
-    while read myLine
+    
+    # Check if input file is readable
+    if [ -f "$1" ] # Read a file 
+    then
+        echo "$1 exists" >/dev/null # Yes, file readable. Do nothing.
+    else
+        echo "$1 does NOT EXIST!!" >&2 # File is not readable. Error to stderr and return 1.
+        return 1
+    fi
+    # Read a valid file
+    while read myLine # read a file and store data to temp file.
     do
         echo "$myLine" >> $datafilepath
-    done < $1 
+    done < $1 # Read the first argument which is a file.
+else # If number of arguments is more than 1 (invalid), error to stderr and return 1.
+    echo "You have more than 1 argument. This is INVALID!!" >&2
+    return 1
 fi
-
-#cat -A $datafilepath
-#cat $datafilepath
 
 # Process:
 # Traverse all rows and columns of matrix.
-# Increment rowNum and colNum for every row and column.
+# Increment rowNum and colNum for every row and column, respectively.
 # Need to divide colNum by rowNum to get correct number of column.
-rowNum=0 # number of rows
-colNum=0 # number of columns
-while read myLine
+
+rowNum=0 # number of rows.
+colNum=0 # number of columns. 
+
+while read myLine # Read data from the temp file, 'datafilepath'.
 do
-rowNum=`expr $rowNum + 1`
-    for i in $myLine
+rowNum=`expr $rowNum + 1` # Increment number of row.
+    for i in $myLine # Read every value in a row.
     do
-        colNum=`expr $colNum + 1`
+        colNum=`expr $colNum + 1` # Increment number of column.
     done
-done < $datafilepath
+done < $datafilepath # Read a temp file.
 
-colNum=`expr $colNum / $rowNum`
-echo "$rowNum $colNum"
+colNum=`expr $colNum / $rowNum` # Divide number of column by number of row.
+echo "$rowNum $colNum" # Print out result.
 
-# Delete a temp file
-rm -f $datafilepath
+rm -f $datafilepath # Delete a temp file
 
-return 0
+return 0 # Return 0, which means the input is valid.
 }
-
 
 
 function transpose(){
@@ -50,8 +69,13 @@ echo "func transpose called"
 
 }
 
-
-
 # Main program starts from here
 $1 "${@:2}"
 
+# Check return value => NEED TO DELETE before SUBMISSION!!!!!!!!!!!!!!!!!!!!!!!!!!!
+if [ $? -ne 0 ]
+then
+    echo "stdERR"
+else
+    echo "stdOUT"
+fi
