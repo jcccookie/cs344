@@ -35,7 +35,7 @@ fi
 
 function dims(){
   # NAME
-  #   dims - Outputs dimensions of a matrix
+  #   dims - Outputs the dimensions of a matrix.
   # SYNOPSIS
   #   dims MATRIX
   # DESCRIPTION
@@ -53,28 +53,73 @@ trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting a
 # Execute input checking function
 dtmInputChecker "$datafilepath" "${@:1}"
 
-if [ $? -eq 1 ]
+if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
 then
     return 1
-else
+else # Implement dims operation
     rowNum=$(wc -l <"$datafilepath") # Count number of lines of input file.
-    firstline=$(head -n 1 "$datafilepath") # variable for first line of input file.
-    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line.
+    firstline=$(head -n 1 "$datafilepath") # First line of input file.
+    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which is the number of columns.
 
     echo "$rowNum $colNum" # Print out result.
 
-    rm -f "$datafilepath" # Delete a temp file
+    rm -f "$datafilepath" # Delete a temp file.
 
-    return 0 # Return 0, which means the input is valid.
+    return 0 # Program implemented as desired.
 fi
 }
 
 function transpose(){
-
   # NAME
-  #   transpose - 
+  #   transpose - Output the transpose of the input.
   # SYNOPSIS
   #   transpose MATRIX
+  # DESCRIPTION
+  #   Outputs the transpose of the input matrix. 
+  # AUTHOR
+  #   Written by Kyeong-nam Kim
+
+# Temp files to store input data.
+datafilepath="datafile$$" # To store input file.
+output="matrixfile$$" # To store output matrix.
+
+# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+trap "rm -f $datafilepath $output; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+
+# Execute input checking function
+dtmInputChecker "$datafilepath" "${@:1}"
+
+if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
+then
+    return 1
+else # Implement transpose operation
+    firstline=$(head -n 1 "$datafilepath") # First line of input file.
+    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which is the number of columns.
+
+    # Process:
+    # Traverse columns and cut each field.
+    # Echo each column and translate whitespaces to tab, and append it to temp file.
+    i=0
+    while [ "$i" -lt "$colNum" ] # Traverse input matrix columns by field.
+    do
+        ((i++)) 
+        col=$(cut -f "$i" "$datafilepath") # Store the cut column to variable first.
+	echo $col | tr ' ' '\t' >> "$output" # Translate whitespaces to tab, and append column to temp file for output.
+    done    	
+
+    cat "$output"
+
+    rm -f "$datafilepath" "$output" # Delete temp files
+
+    return 0 # Program implemented as desired.
+fi
+}
+
+function mean(){
+  # NAME
+  #   mean - 
+  # SYNOPSIS
+  #   mean MATRIX
   # DESCRIPTION
   #   O
   #   P
@@ -90,22 +135,17 @@ trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting a
 # Execute input checking function
 dtmInputChecker "$datafilepath" "${@:1}"
 
-if [ $? -eq 1 ]
+if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
 then
     return 1
-else
-    # Process:
-    # 
-    # 
-    # 
+else # Implement mean operation
 
 
     rm -f "$datafilepath" # Delete a temp file
 
-    return 0 # Return 0, which means the input is valid.
+    return 0 # Program implemented as desired.
 fi
 }
-
 # Main program starts from here
 $1 "${@:2}"
 
