@@ -1,4 +1,5 @@
 #!/bin/bash 
+
 function dtmInputChecker(){ 
   # NAME
   #   dtmInputChecker - Process matrix input and save data to temp file, or catch an error if input is invalid.
@@ -99,17 +100,24 @@ else # Implement transpose operation
     # Process:
     # Traverse columns and cut each field.
     # Echo each column and translate whitespaces to tab, and append it to temp file.
+    # e.g., let's say we have a matrix like below. 
+    #                1  2  3  4
+    #                5  6  7  8
+    #                9 10 11 12
+    # The variable 'colToRow' will store 1 5 9, and the line is delimited by whitespaces.
+    # We translate all whitespace in the line to tab, and append the row to output file.
+    # Repeat this process for all columns.
     i=0
-    while [ "$i" -lt "$colNum" ] # Traverse input matrix columns by field.
+    while [ "$i" -lt "$colNum" ] # Traverse input matrix columns. 
     do
         ((i++)) 
-        col=$(cut -f "$i" "$datafilepath") # Store the cut column to variable first.
-	echo $col | tr ' ' '\t' >> "$output" # Translate whitespaces to tab, and append column to temp file for output.
+        colToRow=$(cut -f "$i" "$datafilepath") # Cut column by field and store it to variable in form of row.
+	echo $colToRow | tr ' ' '\t' >> "$output" # Translate whitespaces to tab, and append column to temp file for output.
     done    	
 
-    cat "$output"
+    cat "$output" # Display the transpose of the input matrix.
 
-    rm -f "$datafilepath" "$output" # Delete temp files
+    rm -f "$datafilepath" "$output" # Delete temp files.
 
     return 0 # Program implemented as desired.
 fi
