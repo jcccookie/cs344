@@ -1,0 +1,13 @@
+===Rubric 1a=== Dims with 2 arguments should throw error (1pt):
+===Rubric 1b=== Add with 0 arguments should throw error (1pt):
+===Rubric 1c=== Multiply mismatched matrices should throw error (5pt):
+===Rubric 1d=== Adding mismatched matrices should throw error (4pt):
+===Rubric 1e=== Transposing undreadable file should throw error (2pt):
+===Rubric 1f=== Dims on nonexistent file should throw error (1pt):
+===Rubric 1g=== badcommand should throw error (1pt):
+===Rubric 2a=== Piping m1 (5x6) into dims (3pt):
+===Rubric 2b=== Piping m2 (6x7) into dims (3pt):
+===Rubric 2c=== Piping m3 (3x8) into dims (3pt):
+===Rubric 2d=== Passing m4 (8x5) to dims on stdin (3pt):
+===Rubric 2e=== Passing m1 (5x6) to dims on stdin (3pt):
+===Rubric 2f=== Passing m2 (6x7) to dims on stdin (3pt):

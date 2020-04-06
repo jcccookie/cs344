@@ -13,25 +13,26 @@ function dtmInputChecker(){
   #   If matrix file is not readable or number of arguments of matrix file is greater than 1, catch error and return 1.
   # AUTHOR
   #   Written by Kyeong-nam Kim
-if [ "$#" = "1" ] # If input type is stdin, 
-then
-    cat > "$1" # let user type a matrix and store data to a temp file.
-elif [ "$#" = "2" ] # If input type is file, 
-then
-    # Check if input file is readable
-    if [ -f "$2" ] # Read a file 
-    then
-        echo "$2 exists" >/dev/null # Yes, file readable. Do nothing.
-    else
-        echo "$2 does NOT EXIST!!" >&2 # File is not readable. Error to stderr and return 1.
-        return 1
-    fi
-    # Read a valid file and store data to temp file.
-    cat "$2" > "$1"
-else # If number of arguments is more than 1 (invalid), error to stderr and return 1.
-    echo "You have more than 1 argument. This is INVALID!!" >&2
-    return 1
-fi
+
+	if [ "$#" = "1" ] # If input type is stdin, 
+	then
+	    cat > "$1" # let user type a matrix and store data to a temp file.
+	elif [ "$#" = "2" ] # If input type is file, 
+	then
+	    # Check if input file is readable
+	    if [ -f "$2" ] # Read a file 
+	    then
+		echo "$2 exists" >/dev/null # Yes, file readable. Do nothing.
+	    else
+		echo "$2 does NOT EXIST!!" >&2 # File is not readable. Error to stderr and return 1.
+		return 1
+	    fi
+	    # Read a valid file and store data to temp file.
+	    cat "$2" > "$1"
+	else # If number of arguments is more than 1 (invalid), error to stderr and return 1.
+	    echo "You have more than 1 argument. This is INVALID!!" >&2
+	    return 1
+	fi
 }
 
 function dims(){
@@ -45,29 +46,29 @@ function dims(){
   # AUTHOR
   #   Written by Kyeong-nam Kim
 
-# Temp file to store input data.
-datafilepath="datafile$$" 
+	# Temp file to store input data.
+	datafilepath="datafile$$" 
 
-# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
-trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+	# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+	trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
 
-# Execute input checking function
-dtmInputChecker "$datafilepath" "${@:1}"
+	# Execute input checking function
+	dtmInputChecker "$datafilepath" "${@:1}"
 
-if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
-then
-    return 1
-else # Implement dims operation
-    rowNum=$(wc -l <"$datafilepath") # Count number of lines of input file.
-    firstline=$(head -n 1 "$datafilepath") # First line of input file.
-    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which represents the number of columns.
+	if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
+	then
+	    return 1
+	else # Implement dims operation
+	    rowNum=$(wc -l <"$datafilepath") # Count number of lines of input file.
+	    firstline=$(head -n 1 "$datafilepath") # First line of input file.
+	    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which represents the number of columns.
 
-    echo "$rowNum $colNum" # Print out result.
+	    echo "$rowNum $colNum" # Print out result.
 
-    rm -f "$datafilepath" # Delete a temp file.
+	    rm -f "$datafilepath" # Delete a temp file.
 
-    return 0 # Program implemented as desired.
-fi
+	    return 0 # Program implemented as desired.
+	fi
 }
 
 function transpose(){
@@ -80,59 +81,59 @@ function transpose(){
   # AUTHOR
   #   Written by Kyeong-nam Kim
 
-# Temp files to store input data.
-datafilepath="datafile$$" # To store input file.
-output="matrixfile$$" # To store output matrix.
+	# Temp files to store input data.
+	datafilepath="datafile$$" # To store input file.
+	output="matrixfile$$" # To store output matrix.
 
-# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
-trap "rm -f $datafilepath $output; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+	# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+	trap "rm -f $datafilepath $output; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
 
-# Execute input checking function
-dtmInputChecker "$datafilepath" "${@:1}"
+	# Execute input checking function
+	dtmInputChecker "$datafilepath" "${@:1}"
 
-if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
-then
-    return 1
-else # Implement transpose operation
-    # Process:
-    # Traverse columns and cut each field.
-    # Echo each column and translate whitespaces to tab, and append it to temp file.
-    # e.g., let's say we have a matrix like below. 
-    #                1  2  3  4
-    #                5  6  7  8
-    #                9 10 11 12
-    # We traverse all columns by field and the first candidate is  1
-    # 								   5	        
-    # 								   9	
-    # We cut this column and store it to a variable.
-    # The variable holds string '1 5 9', and this is delimited by whitespaces.
-    # We translate all whitespace in the line to tab, and append the row to output file.
-    # Repeat this process for all columns.
+	if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
+	then
+	    return 1
+	else # Implement transpose operation
+	    # Process:
+	    # Traverse columns and cut each field.
+	    # Echo each column and translate whitespaces to tab, and append it to temp file.
+	    # e.g., let's say we have a matrix like below. 
+	    #                1  2  3  4
+	    #                5  6  7  8
+	    #                9 10 11 12
+	    # We traverse all columns by field and the first candidate is  1
+	    # 								   5	        
+	    # 								   9	
+	    # We cut this column and store it to a variable.
+	    # When the variable is sent out to stdout, the data inside is delimited by whitespaces, '1 5 9'.
+	    # Then, we translate all whitespace in the line to tab, and append the row to output file.
+	    # Repeat this process for all columns.
 
-    firstline=$(head -n 1 "$datafilepath") # First line of input file.
-    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which represents the number of columns.
-    i=0
+	    firstline=$(head -n 1 "$datafilepath") # First line of input file.
+	    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which represents the number of columns.
+	    i=0
 
-    while [ "$i" -lt "$colNum" ] # Traverse input matrix columns. 
-    do
-        ((i++)) 
-        colToRow=$(cut -f "$i" "$datafilepath") # Cut column by field and store it to variable in form of row.
-	echo $colToRow | tr ' ' '\t' >> "$output" # Translate whitespaces to tab, and append column to temp file for output.
-    done    	
+	    while [ "$i" -lt "$colNum" ] # Traverse input matrix columns. 
+	    do
+		((i++)) 
+		colToRow=$(cut -f "$i" "$datafilepath") # Cut column by field and store it to variable.
+		echo $colToRow | tr ' ' '\t' >> "$output" # Stdout data by echo, translate whitespaces to tab, and append data to temp file for output.
+	    done    	
 
-    cat "$output" # Display the transpose of the input matrix.
+	    cat "$output" # Display the transpose of the input matrix.
 
-    rm -f "$datafilepath" "$output" # Delete temp files.
+	    rm -f "$datafilepath" "$output" # Delete temp files.
 
-    return 0 # Program implemented as desired.
-fi
+	    return 0 # Program implemented as desired.
+	fi
 }
 
 function mean(){
   # NAME
-  #   mean - 
+  #   m
   # SYNOPSIS
-  #   mean MATRIX
+  #   m
   # DESCRIPTION
   #   O
   #   P
@@ -159,13 +160,79 @@ else # Implement mean operation
     return 0 # Program implemented as desired.
 fi
 }
+
+function add(){
+  # NAME
+  #   m
+  # SYNOPSIS
+  #   m
+  # DESCRIPTION
+  #   O
+  #   P
+  # AUTHOR
+  #   Written by Kyeong-nam Kim
+
+# Temp file to store input data.
+datafilepath="datafile$$" 
+
+# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+
+# Execute input checking function
+dtmInputChecker "$datafilepath" "${@:1}"
+
+if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
+then
+    return 1
+else # Implement mean operation
+
+
+    rm -f "$datafilepath" # Delete a temp file
+
+    return 0 # Program implemented as desired.
+fi
+}
+
+
+function multiply(){
+  # NAME
+  #   m
+  # SYNOPSIS
+  #   m
+  # DESCRIPTION
+  #   O
+  #   P
+  # AUTHOR
+  #   Written by Kyeong-nam Kim
+
+# Temp file to store input data.
+datafilepath="datafile$$" 
+
+# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+
+# Execute input checking function
+dtmInputChecker "$datafilepath" "${@:1}"
+
+if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
+then
+    return 1
+else # Implement mean operation
+
+
+    rm -f "$datafilepath" # Delete a temp file
+
+    return 0 # Program implemented as desired.
+fi
+}
+
 # Main program starts from here
 $1 "${@:2}"
 
 # Check return value => NEED TO DELETE before SUBMISSION!!!!!!!!!!!!!!!!!!!!!!!!!!!
-if [ $? -ne 0 ]
-then
-    echo "stdERR"
-else
-    echo "stdOUT"
-fi
+#if [ $? -ne 0 ]
+#then
+#    echo "stdERR"
+#else
+#    echo "stdOUT"
+#fi
