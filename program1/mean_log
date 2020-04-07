@@ -1,0 +1,24 @@
+Checking for banned tools
+None of the listed banned tools found
+===Rubric 1a=== Dims with 2 arguments should throw error (1pt):
++ Passed!
+===Rubric 1b=== Add with 0 arguments should throw error (1pt):
++ Passed!
+===Rubric 1c=== Multiply mismatched matrices should throw error (5pt):
++ Passed!
+===Rubric 1d=== Adding mismatched matrices should throw error (4pt):
++ Passed!
+===Rubric 1e=== Transposing undreadable file should throw error (2pt):
++ Passed!
+===Rubric 1f=== Dims on nonexistent file should throw error (1pt):
++ Passed!
+===Rubric 1g=== badcommand should throw error (1pt):
++ Passed!
+===Rubric 4a=== Mean on hardcoded matrix (15pt):
++ Passed!
+===Rubric 4b=== Mean on 5x10 zero matrix w/ piping (2pt):
++ Passed!
+===Rubric 4c=== Mean on 5x10 all ones matrix (5pt):
++ Passed!
+===Rubric 4d=== Mean on 10x10 identity matrix (5pt):
++ Passed!

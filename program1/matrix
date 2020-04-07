@@ -117,8 +117,8 @@ function transpose(){
 	    while [ "$i" -lt "$colNum" ] # Traverse input matrix columns. 
 	    do
 		((i++)) 
-		colToRow=$(cut -f "$i" "$datafilepath") # Cut column by field and store it to variable.
-		echo $colToRow | tr ' ' '\t' >> "$output" # Stdout data by echo, translate whitespaces to tab, and append data to temp file for output.
+		col=$(cut -f "$i" "$datafilepath") # Cut column by field and store it to variable.
+		echo $col | tr ' ' '\t' >> "$output" # Stdout data by echo, translate whitespaces to tab, and append data to temp file for output.
 	    done    	
 
 	    cat "$output" # Display the transpose of the input matrix.
@@ -131,20 +131,18 @@ function transpose(){
 
 function mean(){
   # NAME
-  #   m
+  #   mean - Outputs the 1xN row vector, where the first element is the mean of each column.
   # SYNOPSIS
-  #   m
+  #   mean MATRIX
   # DESCRIPTION
-  #   O
-  #   P
+  #   Outputs the mean of each column in integers in form of 1xN row vector.
   # AUTHOR
   #   Written by Kyeong-nam Kim
 
-# Temp files to store input data.
+# Temp file to store input data.
 datafilepath="datafile$$" 
-output="matrixfile$$" # To store output matrix.
 # Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
-trap "rm -f $datafilepath $output; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
 
 # Execute input checking function
 dtmInputChecker "$datafilepath" "${@:1}"
@@ -153,6 +151,12 @@ if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
 then
     return 1
 else # Implement mean operation
+    # Process:
+    # Traverse columns and cut each field.
+    # Calculate the total number of a column by iterating through the values.
+    # Calculate the average of each column by dividing the total sum by the number of rows of the matrix.
+    # Repeat this for all columns.
+
     rowNum=$(wc -l <"$datafilepath") # Count number of lines of input file.
     firstline=$(head -n 1 "$datafilepath") # First line of input file.
     colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which represents the number of columns.
@@ -161,19 +165,25 @@ else # Implement mean operation
     while [ "$i" -lt "$colNum" ] # Traverse input matrix columns. 
     do
 	((i++)) 
-	colToRow=$(cut -f "$i" "$datafilepath") # Cut column by field and store it to variable.
+	col=$(cut -f "$i" "$datafilepath") # Cut column by field and store it to variable.
 	sum=0 # Sum of all values in a column.
-	for val in $colToRow
+	for val in $col # Loop through values in a column.
 	do
-	    sum=`expr $sum + $val`
+	    sum=`expr $sum + $val` # Calculate total sum of values in a column.
 	done
-	mean=`expr` 
-	echo "$sum" >> "$output"
+
+	mean=$(( ($sum + ($rowNum/2)*( ($sum>0)*2-1 )) / $rowNum  )) # Calculate an average of values in a column by dividing total sum by the number of row.
+	echo -n "$mean" # echo the average value without a newline.
+
+	if [ "$i" -ne "$colNum" ]
+	then
+	    echo -ne "\t" # Add a tab after values unless the value is the last.
+	else
+	    echo # Add a newline to the last value.
+	fi	
     done    	
 
-    cat "$output" # Display the transpose of the input matrix.
-
-    rm -f "$datafilepath" "$output" # Delete temp files.
+    rm -f "$datafilepath" # Delete a temp file.
 
     return 0 # Program implemented as desired.
 fi
