@@ -140,11 +140,11 @@ function mean(){
   # AUTHOR
   #   Written by Kyeong-nam Kim
 
-# Temp file to store input data.
+# Temp files to store input data.
 datafilepath="datafile$$" 
-
+output="matrixfile$$" # To store output matrix.
 # Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
-trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+trap "rm -f $datafilepath $output; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
 
 # Execute input checking function
 dtmInputChecker "$datafilepath" "${@:1}"
@@ -153,78 +153,96 @@ if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
 then
     return 1
 else # Implement mean operation
+    rowNum=$(wc -l <"$datafilepath") # Count number of lines of input file.
+    firstline=$(head -n 1 "$datafilepath") # First line of input file.
+    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which represents the number of columns.
+    i=0
 
+    while [ "$i" -lt "$colNum" ] # Traverse input matrix columns. 
+    do
+	((i++)) 
+	colToRow=$(cut -f "$i" "$datafilepath") # Cut column by field and store it to variable.
+	sum=0 # Sum of all values in a column.
+	for val in $colToRow
+	do
+	    sum=`expr $sum + $val`
+	done
+	mean=`expr` 
+	echo "$sum" >> "$output"
+    done    	
 
-    rm -f "$datafilepath" # Delete a temp file
+    cat "$output" # Display the transpose of the input matrix.
 
-    return 0 # Program implemented as desired.
-fi
-}
-
-function add(){
-  # NAME
-  #   m
-  # SYNOPSIS
-  #   m
-  # DESCRIPTION
-  #   O
-  #   P
-  # AUTHOR
-  #   Written by Kyeong-nam Kim
-
-# Temp file to store input data.
-datafilepath="datafile$$" 
-
-# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
-trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
-
-# Execute input checking function
-dtmInputChecker "$datafilepath" "${@:1}"
-
-if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
-then
-    return 1
-else # Implement mean operation
-
-
-    rm -f "$datafilepath" # Delete a temp file
+    rm -f "$datafilepath" "$output" # Delete temp files.
 
     return 0 # Program implemented as desired.
 fi
 }
 
-
-function multiply(){
-  # NAME
-  #   m
-  # SYNOPSIS
-  #   m
-  # DESCRIPTION
-  #   O
-  #   P
-  # AUTHOR
-  #   Written by Kyeong-nam Kim
-
-# Temp file to store input data.
-datafilepath="datafile$$" 
-
-# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
-trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
-
-# Execute input checking function
-dtmInputChecker "$datafilepath" "${@:1}"
-
-if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
-then
-    return 1
-else # Implement mean operation
-
-
-    rm -f "$datafilepath" # Delete a temp file
-
-    return 0 # Program implemented as desired.
-fi
-}
+#function add(){
+#  # NAME
+#  #   m
+#  # SYNOPSIS
+#  #   m
+#  # DESCRIPTION
+#  #   O
+#  #   P
+#  # AUTHOR
+#  #   Written by Kyeong-nam Kim
+#
+## Temp file to store input data.
+#datafilepath="datafile$$" 
+#
+## Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+#trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+#
+## Execute input checking function
+#dtmInputChecker "$datafilepath" "${@:1}"
+#
+#if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
+#then
+#    return 1
+#else # Implement mean operation
+#
+#
+#    rm -f "$datafilepath" # Delete a temp file
+#
+#    return 0 # Program implemented as desired.
+#fi
+#}
+#
+#
+#function multiply(){
+#  # NAME
+#  #   m
+#  # SYNOPSIS
+#  #   m
+#  # DESCRIPTION
+#  #   O
+#  #   P
+#  # AUTHOR
+#  #   Written by Kyeong-nam Kim
+#
+## Temp file to store input data.
+#datafilepath="datafile$$" 
+#
+## Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+#trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+#
+## Execute input checking function
+#dtmInputChecker "$datafilepath" "${@:1}"
+#
+#if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
+#then
+#    return 1
+#else # Implement mean operation
+#
+#
+#    rm -f "$datafilepath" # Delete a temp file
+#
+#    return 0 # Program implemented as desired.
+#fi
+#}
 
 # Main program starts from here
 $1 "${@:2}"
