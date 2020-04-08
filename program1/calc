@@ -1,13 +1,22 @@
 #!/bin/bash
-a=5
-b=2
-c=1
-#a=$(( 3 * ( $b + $c ) ))
-#d=$(( 3 / $b ))
-#echo $a
-#echo $d
+#a=5
+#b=2
+#c=1
+##a=$(( 3 * ( $b + $c ) ))
+##d=$(( 3 / $b ))
+##echo $a
+##echo $d
+#
+#
+#
+#result=$(( ($a + ($b/2)*( ($a>0)*2-1 )) / $b ))
+#echo $result
+a="a b c"
+b="1 2 3"
 
-
-
-result=$(( ($a + ($b/2)*( ($a>0)*2-1 )) / $b ))
-echo $result
+for i in $a; do
+	for j in $b; do
+		[ "$i" -eq "$j" ] && continue
+		echo "$i + $j"
+	done
+done
