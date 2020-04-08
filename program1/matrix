@@ -24,7 +24,7 @@ function dtmInputChecker(){
 	    then
 		echo "$2 exists" >/dev/null # Yes, file readable. Do nothing.
 	    else
-		echo "$2 does NOT EXIST!!" >&2 # File is not readable. Error to stderr and return 1.
+		echo "$2 is NOT READABLE!!" >&2 # File is not readable. Error to stderr and return 1.
 		return 1
 	    fi
 	    # Read a valid file and store data to temp file.
@@ -112,8 +112,8 @@ function transpose(){
 
 	    firstline=$(head -n 1 "$datafilepath") # First line of input file.
 	    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which represents the number of columns.
-	    i=0
 
+	    i=0
 	    while [ "$i" -lt "$colNum" ] # Traverse input matrix columns. 
 	    do
 		((i++)) 
@@ -139,89 +139,126 @@ function mean(){
   # AUTHOR
   #   Written by Kyeong-nam Kim
 
-# Temp file to store input data.
-datafilepath="datafile$$" 
+	# Temp file to store input data.
+	datafilepath="datafile$$" 
+	# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+	trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+
+	# Execute input checking function
+	dtmInputChecker "$datafilepath" "${@:1}"
+
+	if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
+	then
+	    return 1
+	else # Implement mean operation
+	    # Process:
+	    # Traverse columns and cut each field.
+	    # Calculate the total sum of a column by iterating through the values in the variable.
+	    # Calculate the average of each column by dividing the total sum by the number of rows of the matrix.
+	    # Repeat this for all columns.
+
+	    rowNum=$(wc -l <"$datafilepath") # Count number of lines of input file.
+	    firstline=$(head -n 1 "$datafilepath") # First line of input file.
+	    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which represents the number of columns.
+
+	    i=0
+	    while [ "$i" -lt "$colNum" ] # Traverse input matrix columns. 
+	    do
+		((i++)) 
+		col=$(cut -f "$i" "$datafilepath") # Cut column by field and store it to variable.
+		sum=0 # Sum of all values in a column.
+		for val in $col # Loop through values in a column.
+		do
+		    sum=`expr $sum + $val` # Calculate total sum of values in a column.
+		done
+
+		mean=$(( ($sum + ($rowNum/2)*( ($sum>0)*2-1 )) / $rowNum  )) # Calculate an average of values in a column by dividing total sum by the number of row.
+		echo -n "$mean" # echo the average value without a newline.
+
+		if [ "$i" -ne "$colNum" ] # Unless it is not the last column,
+		then
+		    echo -ne "\t" # add a tab after the mean. 
+		else # If it is the last column,
+		    echo # add a newline to the last mean.
+		fi	
+	    done    	
+
+	    rm -f "$datafilepath" # Delete a temp file.
+
+	    return 0 # Program implemented as desired.
+	fi
+}
+
+function addMulInputChecker(){ 
+  # NAME
+  #   addMulInputChecker - Process matrix input and save data to temp file, or catch an error if input is invalid.
+  # SYNOPSIS
+  #   addMulInputChecker TEMPFILE MATRIX_LEFT MATRIX_RIGHT
+  # DESCRIPTION
+  #   Input checker for add and multiply functions.
+  #   Store data in matrix file to temp file.
+  #   If function takes in no matrix file, let user type a matrix.
+  #   If function takes in a matrix file, read a file and store data to temp file.
+  #   If matrix file is not readable or number of arguments of matrix file is greater than 1, catch error and return 1.
+  # AUTHOR
+  #   Written by Kyeong-nam Kim
+
+if [ "$#" -ne "2" ] # The number of arguments is not equal to 2.
+then
+    echo "The number of arguments is INVALID!!" >&2 # Error to stderr and return 1.
+    return 1
+else # The number of arguments is 2.
+    # Check if both input files are readable.
+    if [ -f "$1" ] && [ -f "$2" ] # If both files are readable
+    then
+	echo "Both files are exists" >/dev/null # Yes, both files readable. Do nothing.
+    else
+	echo "Some files are not READABLE!! Check the input files." >&2 # Either file is not readable. Error to stderr and return 1.
+	return 1
+    fi
+
+    # Check if the dimensions of two input matrices are matched so we implement add operation.
+    dimsMatrixLeft=$(dims "$1") # Dimensions of left matrix
+    dimsMatrixRight=$(dims "$2") # Dimensions of right matrix
+    if [ "$dimsMatrixLeft" == "$dimsMatrixRight" ] # Compare dimensions.
+    then
+	echo "Dimensions are matched" >/dev/null # Dims are matched, keep going.
+    else
+	echo "Dimensions of two matrices are NOT matched!!" >&2 # Dimensions are not matched. Error to stederr and return 1.
+	return 1
+    fi
+fi
+}
+
+function add(){
+  # NAME
+  #   add - 
+  # SYNOPSIS
+  #   add MATRIX_LEFT MATRIX_RIGHT
+  # DESCRIPTION
+  #   O
+  #   P
+  # AUTHOR
+  #   Written by Kyeong-nam Kim
+
+
 # Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
-trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+trap "rm -f $dddjdjfjgjdjdjjgj; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
 
 # Execute input checking function
-dtmInputChecker "$datafilepath" "${@:1}"
+addMulInputChecker "${@:1}"
 
 if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
 then
     return 1
 else # Implement mean operation
-    # Process:
-    # Traverse columns and cut each field.
-    # Calculate the total number of a column by iterating through the values.
-    # Calculate the average of each column by dividing the total sum by the number of rows of the matrix.
-    # Repeat this for all columns.
-
-    rowNum=$(wc -l <"$datafilepath") # Count number of lines of input file.
-    firstline=$(head -n 1 "$datafilepath") # First line of input file.
-    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which represents the number of columns.
-    i=0
-
-    while [ "$i" -lt "$colNum" ] # Traverse input matrix columns. 
-    do
-	((i++)) 
-	col=$(cut -f "$i" "$datafilepath") # Cut column by field and store it to variable.
-	sum=0 # Sum of all values in a column.
-	for val in $col # Loop through values in a column.
-	do
-	    sum=`expr $sum + $val` # Calculate total sum of values in a column.
-	done
-
-	mean=$(( ($sum + ($rowNum/2)*( ($sum>0)*2-1 )) / $rowNum  )) # Calculate an average of values in a column by dividing total sum by the number of row.
-	echo -n "$mean" # echo the average value without a newline.
-
-	if [ "$i" -ne "$colNum" ]
-	then
-	    echo -ne "\t" # Add a tab after values unless the value is the last.
-	else
-	    echo # Add a newline to the last value.
-	fi	
-    done    	
-
-    rm -f "$datafilepath" # Delete a temp file.
+    echo "Do something"
 
     return 0 # Program implemented as desired.
 fi
 }
 
-#function add(){
-#  # NAME
-#  #   m
-#  # SYNOPSIS
-#  #   m
-#  # DESCRIPTION
-#  #   O
-#  #   P
-#  # AUTHOR
-#  #   Written by Kyeong-nam Kim
-#
-## Temp file to store input data.
-#datafilepath="datafile$$" 
-#
-## Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
-#trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
-#
-## Execute input checking function
-#dtmInputChecker "$datafilepath" "${@:1}"
-#
-#if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
-#then
-#    return 1
-#else # Implement mean operation
-#
-#
-#    rm -f "$datafilepath" # Delete a temp file
-#
-#    return 0 # Program implemented as desired.
-#fi
-#}
-#
-#
+
 #function multiply(){
 #  # NAME
 #  #   m
