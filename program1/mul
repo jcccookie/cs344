@@ -1,0 +1,7 @@
+#!/bin/bash
+
+mul(){
+	matrix multiply "${@:1}"
+}
+
+mul "${@:1}"
