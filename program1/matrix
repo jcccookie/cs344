@@ -193,38 +193,55 @@ function addMulInputChecker(){
   # NAME
   #   addMulInputChecker - Process matrix input, or catch an error if input are invalid.
   # SYNOPSIS
-  #   addMulInputChecker MATRIX_LEFT MATRIX_RIGHT
+  #   addMulInputChecker OPERATION MATRIX_LEFT MATRIX_RIGHT
   # DESCRIPTION
   #   Input checker for add and multiply functions.
-  #   If arguments count does not equal to 2, print error message. 
-  #   If arguments count is 2, but the either file is not readable, print error message. 
-  #   If dimensions of input matrices are not matched, print error message.
+  #   If matrices count does not equal to 2, print error message. 
+  #   If matrices count is 2, but the either file is not readable, print error message. 
+  #   If add operation and dimensions of input matrices are not matched, print error message.
+  #   If multiply operation and dimensions of input matrices are not valid, print error message.
   # AUTHOR
   #   Written by Kyeong-nam Kim
 
-	if [ "$#" -ne "2" ] # The number of arguments does not equal to 2.
+	if [ "$#" -ne "3" ] # The number of matrices does not equal to 2.
 	then
 	    echo "The number of arguments is INVALID!!" >&2 # Error to stderr and return 1.
 	    return 1
-	else # The number of arguments is 2.
+	else # The number of matrices is 2.
 	    # Check if both input files are readable.
-	    if [ -f "$1" ] && [ -f "$2" ] # If both files are readable
+	    if [ -f "$2" ] && [ -f "$3" ] # If both files are readable
 	    then
 		echo "Both files are exists" >/dev/null # Yes, both files readable. Do nothing.
 	    else
 		echo "Some files are NOT readable!! Check the names of input files." >&2 # Either file is not readable. Error to stderr and return 1.
 		return 1
 	    fi
+
 	    # After we check both files are readable, we should
 	    # check if the dimensions of two input matrices are matched so we implement add operation.
-	    dimsMatrixLeft=$(dims "$1") # Dimensions of left matrix
-	    dimsMatrixRight=$(dims "$2") # Dimensions of right matrix
-	    if [ "$dimsMatrixLeft" == "$dimsMatrixRight" ] # Compare dimensions.
+	    dimsMatrixLeft=$(dims "$2") # Dimensions of left matrix
+	    dimsMatrixRight=$(dims "$3") # Dimensions of right matrix
+	    # Check dimensions for add operation
+	    if [ "$1" == "add" ]
 	    then
-		echo "Dimensions are matched" >/dev/null # Dims are matched, keep going.
-	    else
-		echo "Dimensions of two matrices are NOT matched!!" >&2 # Dimensions are not matched. Error to stederr and return 1.
-		return 1
+	        if [ "$dimsMatrixLeft" == "$dimsMatrixRight" ] # Compare dimensions.
+	        then
+		    echo "Dimensions are matched" >/dev/null # Dims are matched, keep going.
+	        else
+		    echo "Dimensions of two matrices are NOT matched!!" >&2 # Dimensions are not matched. Error to stederr and return 1.
+		    return 1
+	        fi
+	    # Check dimensions for multiply operation
+	    elif [ "$1" == "mul" ]
+	    then
+		leftMatCol=$(echo $dimsMatrixLeft | cut -d " " -f 2)
+		rightMatRow=$(echo $dimsMatrixRight | cut -d " " -f 1)
+		if [ "$leftMatCol" == "$rightMatRow" ]
+		then
+		    echo "Multiplication rule is not violoated." >/dev/null
+		else
+		    echo "Matrices can NOT be multiplied together!!" >&2
+		fi
 	    fi
 	fi
 }
@@ -239,107 +256,102 @@ function add(){
   # AUTHOR
   #   Written by Kyeong-nam Kim
 
+	# Execute input checking function
+	addMulInputChecker "add" "${@:1}"
+
+	if [ $? -eq 1 ] # If there is an error caught by addMulInputChecker, return 1.
+	then
+	    return 1
+	else # Implement mean operation
+	    # Process:
+	    # Simultaneously loop through rows of both matrices, and put both lines to a temp file.
+	    # Then, traverse columns in the temp file and cut each column by field. 
+	    # Calculate the sum of each column by iterating through the values in the variable.
+	    # Print out the sum in matrix form.
+	    # Repeat this for all rows. 
+	    #
+	    #   ------>-------->-------->-------->-------->-------->
+	    #
+	    #  =>1 2 3 | =>10 10 10 |    1  2  3      |    11 12 13          
+	    #    4 5 6 |   10 10 10 |    10 10 10     |              
+	    #    7 8 9 |   10 10 10 |                 |
+	    #   <left> |    <right> |    <temp>       |     <echo>      
+	    #      		       (cut by field) |  (after sum each column)
+	    #
+	    #   ------>-------->-------->-------->-------->-------->
+	    #   start						end
+	    #
+	    #
+	    rowNum=$(wc -l <"$1") # Count number of rows of input file.
+	    firstline=$(head -n 1 "$1") # First line of input file.
+	    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which represents the number of columns.
+
+	    while read left # Loop left matrix by row.
+	    do
+		read right <&3 # Read a row in right matrix that was sent to the file descriptor 3.
+
+		temp="tempfile$$" # A temp file to store rows from left and right matrices.
+		# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+		trap "rm -f $temp; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+
+		echo "$left" >> "$temp" # Append a line from left matrix to temp.
+		echo "$right" >> "$temp" # Append a line from right matrix to temp.
+		
+		i=0
+		while [ "$i" -lt "$colNum" ] # Traverse columns of temp file.
+		do
+		    ((i++))
+		    col=$(cut -f "$i" "$temp") # Cut column by field and store it to a variable.
+		    sum=0 # Sum of values in a column.
+
+		    for val in $col # Loop through values and calculate sum.
+		    do
+			sum=`expr $sum + $val`
+		    done
+
+		    echo -n "$sum" # Echo the sum.
+		    
+		    if [ "$i" -ne "$colNum" ] # Unless it is not the last column,
+		    then
+			echo -ne "\t" # add a tab after the sum.
+		    else # If it is the last column,
+			echo # add a new line.
+		    fi
+		done
+
+		rm -f "$temp" # Delete a temp file.
+	    done <"$1" 3<"$2" # While loop takes in two arguments, left and right matrix. Right matrix is sent to file descriptor 3.   
+
+	    return 0 # Program implemented as desired.
+	fi
+}
+
+function multiply(){
+  # NAME
+  #   multiply - 
+  # SYNOPSIS
+  #   multiply MATRIX_LEFT MATRIX_RIGHT
+  # DESCRIPTION
+  #   O
+  # AUTHOR
+  #   Written by Kyeong-nam Kim
+
+# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
 
 # Execute input checking function
-addMulInputChecker "${@:1}"
+addMulInputChecker "mul" "${@:1}"
 
 if [ $? -eq 1 ] # If there is an error caught by addMulInputChecker, return 1.
 then
     return 1
 else # Implement mean operation
-    # Process:
-    # Simultaneously loop through rows of both matrices, and put both lines to a temp file.
-    # Then, traverse columns in the temp file and cut each column by field. 
-    # Calculate the sum of each column by iterating through the values in the variable.
-    # Print out the sum in matrix form.
-    # Repeat this for all rows. 
-    #
-    #  =>1 2 3 | =>10 10 10 |    1  2  3      |    11 12 13          
-    #    4 5 6 |   10 10 10 |    10 10 10     |              
-    #    7 8 9 |   10 10 10 |                 |
-    #   <left> |    <right> |    <temp>       |     <echo>      
-    #      		       (cut by field) |  (after sum each column)
-    #
-    #    
-    #   ------>-------->-------->-------->-------->-------->
-    #   
-    #
-    rowNum=$(wc -l <"$1") # Count number of rows of input file.
-    firstline=$(head -n 1 "$1") # First line of input file.
-    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which represents the number of columns.
 
-    while read left # Loop left matrix by row.
-    do
-	read right <&3 # Read right matrix that was sent to the file descriptor 3.
-
-        temp="tempfile$$" # A temp file to store rows from left and right matrices.
-	# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
-	trap "rm -f $temp; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
-
-	echo "$left" >> "$temp" # Append a line from left matrix to temp.
-	echo "$right" >> "$temp" # Append a line from right matrix to temp.
-  	
-	i=0
-	while [ "$i" -lt "$colNum" ] # Traverse columns of temp file.
-	do
-	    ((i++))
-	    col=$(cut -f "$i" "$temp") # Cut column by field and store it to a variable.
-	    sum=0 # Sum of values in a column.
-
-	    for val in $col # Loop through values and calculate sum.
-	    do
-	        sum=`expr $sum + $val`
-	    done
-
-   	    echo -n "$sum" # Echo the sum.
-	    
-	    if [ "$i" -ne "$colNum" ] # Unless it is not the last column,
-	    then
-		echo -ne "\t" # add a tab after the sum.
-	    else # If it is the last column,
-		echo # add a new line.
-	    fi
-	done
-
-	rm -f "$temp" # Delete a temp file.
-    done <"$1" 3<"$2" # While loop takes in two arguments, left and right matrix. Right matrix is sent to file descriptor 3.   
+    echo "Do something here..."
 
     return 0 # Program implemented as desired.
 fi
 }
-
-
-#function multiply(){
-#  # NAME
-#  #   m
-#  # SYNOPSIS
-#  #   m
-#  # DESCRIPTION
-#  #   O
-#  #   P
-#  # AUTHOR
-#  #   Written by Kyeong-nam Kim
-#
-## Temp file to store input data.
-#datafilepath="datafile$$" 
-#
-## Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
-#trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
-#
-## Execute input checking function
-#dtmInputChecker "$datafilepath" "${@:1}"
-#
-#if [ $? -eq 1 ] # If there is an error caught by addMulInputChecker, return 1.
-#then
-#    return 1
-#else # Implement mean operation
-#
-#
-#    rm -f "$datafilepath" # Delete a temp file
-#
-#    return 0 # Program implemented as desired.
-#fi
-#}
 
 # Main program starts from here
 $1 "${@:2}"
