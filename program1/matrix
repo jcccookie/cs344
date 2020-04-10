@@ -96,15 +96,15 @@ function transpose(){
 	    return 1
 	else # Implement transpose operation
 	    # Process:
-	    # Traverse columns and cut each field.
+	    # Traverse every column as a whole and cut it.
 	    # Echo each column and translate whitespaces to tab, and append it to temp file.
 	    # e.g., let's say we have a matrix like below. 
 	    #                1  2  3  4
 	    #                5  6  7  8
 	    #                9 10 11 12
-	    # We traverse all columns by field and the first candidate is  1
-	    # 								   5	        
-	    # 								   9	
+	    # We traverse all columns by field, and the first candidate is  1
+	    # 				  				    5	        
+	    # 								    9	
 	    # We cut this column and store it to a variable.
 	    # When the variable is sent out to stdout, the data inside is delimited by whitespaces, '1 5 9'.
 	    # Then, we translate all whitespace in the line to tab, and append the row to output file.
@@ -152,7 +152,7 @@ function mean(){
 	    return 1
 	else # Implement mean operation
 	    # Process:
-	    # Traverse columns and cut each field.
+	    # Traverse every column as a whole, and cut each field.
 	    # Calculate the total sum of a column by iterating through the values in the variable.
 	    # Calculate the average of each column by dividing the total sum by the number of rows of the matrix.
 	    # Repeat this for all columns.
@@ -161,6 +161,7 @@ function mean(){
 	    firstline=$(head -n 1 "$datafilepath") # First line of input file.
 	    colNum=$(wc -w <<<"$firstline") # Count number of words in the first line, which represents the number of columns.
 
+	    # Calculate sum of columns of input matrix and print it out.
 	    i=0
 	    while [ "$i" -lt "$colNum" ] # Traverse input matrix columns. 
 	    do
@@ -218,13 +219,14 @@ function addMulInputChecker(){
 	    fi
 
 	    # After we check both files are readable, we should
-	    # check if the dimensions of two input matrices are matched so we implement add operation.
+	    # check if the dimensions of two input matrices are valid for add and multiply operations. 
 	    dimsMatrixLeft=$(dims "$2") # Dimensions of left matrix
 	    dimsMatrixRight=$(dims "$3") # Dimensions of right matrix
+
 	    # Check dimensions for add operation
 	    if [ "$1" == "add" ]
 	    then
-	        if [ "$dimsMatrixLeft" == "$dimsMatrixRight" ] # Compare dimensions.
+	        if [ "$dimsMatrixLeft" == "$dimsMatrixRight" ] # Check dimensions of two matrices if these are exactly matched with each other.
 	        then
 		    echo "Dimensions are matched" >/dev/null # Dims are matched, keep going.
 	        else
@@ -234,13 +236,15 @@ function addMulInputChecker(){
 	    # Check dimensions for multiply operation
 	    elif [ "$1" == "mul" ]
 	    then
-		leftMatCol=$(echo $dimsMatrixLeft | cut -d " " -f 2)
-		rightMatRow=$(echo $dimsMatrixRight | cut -d " " -f 1)
-		if [ "$leftMatCol" == "$rightMatRow" ]
+		leftMatCol=$(echo $dimsMatrixLeft | cut -d " " -f 2) # Number of column of left matrix
+		rightMatRow=$(echo $dimsMatrixRight | cut -d " " -f 1) # Number of row of right matrix
+
+		if [ "$leftMatCol" == "$rightMatRow" ] # If these numbers are matched, which means two matrices are multipliable together,
 		then
-		    echo "Multiplication rule is not violoated." >/dev/null
-		else
-		    echo "Matrices can NOT be multiplied together!!" >&2
+		    echo "Multiplication rule is not violoated." >/dev/null # Do nothing.
+		else # If these numbers are not matched,
+		    echo "Matrices can NOT be multiplied together!!" >&2 # Two matrices are not multipliable together. Error to stderr and return 1.
+		    return 1
 		fi
 	    fi
 	fi
@@ -265,7 +269,7 @@ function add(){
 	else # Implement mean operation
 	    # Process:
 	    # Simultaneously loop through rows of both matrices, and put both lines to a temp file.
-	    # Then, traverse columns in the temp file and cut each column by field. 
+	    # Then, traverse every column as a whol in the temp file and cut each column by field. 
 	    # Calculate the sum of each column by iterating through the values in the variable.
 	    # Print out the sum in matrix form.
 	    # Repeat this for all rows. 
@@ -294,9 +298,10 @@ function add(){
 		# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
 		trap "rm -f $temp; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
 
-		echo "$left" >> "$temp" # Append a line from left matrix to temp.
+		echo "$left" > "$temp" # Append a line from left matrix to temp.
 		echo "$right" >> "$temp" # Append a line from right matrix to temp.
 		
+		# Calculate sum of columns in temp. 
 		i=0
 		while [ "$i" -lt "$colNum" ] # Traverse columns of temp file.
 		do
@@ -336,9 +341,6 @@ function multiply(){
   # AUTHOR
   #   Written by Kyeong-nam Kim
 
-# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
-trap "rm -f $datafilepath; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
-
 # Execute input checking function
 addMulInputChecker "mul" "${@:1}"
 
@@ -347,19 +349,35 @@ then
     return 1
 else # Implement mean operation
 
-    echo "Do something here..."
+#    dimsLeft=$(dims "$1")
+#    dimsRight=$(dims "$2")
+#    leftRowNum=$(echo "$dimsLeft" | cut -d " " -f 1)
+#    leftColNum=$(echo "$dimsLeft" | cut -d " " -f 2)
+#    rightRowNum=$(echo "$dimsright" | cut -d " " -f 1)
+#    rightColNum=$(echo "$dimsright" | cut =d " " -f 2)
+	
+    transRight=$(transpose "$2")
+    
+    while read left
+    do
+	read right <&3
+	
+	temp="tempfile$$" # A temp file to store rows from left and right matrices.
+	# Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+	trap "rm -f $temp; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+
+	echo "$left" > "$temp" # Append a line from left matrix to temp.
+	echo "$right" >> "$temp" # Append a line from right matrix to temp.
+	
+	cat "$temp"
+
+	rm -f "$temp" # Delete a temp file.
+    done <"$1" 3<<<"$transRight"
 
     return 0 # Program implemented as desired.
 fi
 }
 
-# Main program starts from here
+# OPERATION MATRIX/MATRICES
 $1 "${@:2}"
 
-# Check return value => NEED TO DELETE before SUBMISSION!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#if [ $? -ne 0 ]
-#then
-#    echo "stdERR"
-#else
-#    echo "stdOUT"
-#fi
