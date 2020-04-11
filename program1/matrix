@@ -344,95 +344,95 @@ function multiply(){
   # AUTHOR
   #   Written by Kyeong-nam Kim
 
-# Execute input checking function
-addMulInputChecker "mul" "${@:1}"
+	# Execute input checking function
+	addMulInputChecker "mul" "${@:1}"
 
-if [ $? -eq 1 ] # If there is an error caught by addMulInputChecker, return 1.
-then
-    return 1
-else # Implement multiply operation
-    # Process:
-    # To begin with, I chose to transpose one of the input matrices (right matrix for this algorithm) to efficiently calculate the sum of multiplied values with bash. 
-    # First step is transposing right input matrix and put it to a variable.
-    # Because we should match every row in matrix with every column in another one, we need two loops, one for left, another for transposed right matrix.
-    # While traversing left matrix and transposed right matrix, we append both lines to a temp file.
-    # Cut a column by field and multiply values, and add it to total sum.
-    # Print out the sum in matrix form.
-    # Repeat this for all rows in left matrix.
-    #
-    #   Transpose right matrix-->---->---->---->---->---->
-    #   <left> |  <right>     <transposed right>
-    #   1 2 3  |    7 6            7 8 9
-    #   5 6 7  |    8 5    ->      6 5 4
-    #          |    9 4
-    # 
-    #   Calculate first value--->---->---->---->---->---->---->---->---->
-    #   <left> | <transposed right> |       <temp>        |   <echo>         
-    # =>1 2 3  |    =>7 8 9         |       1 2 3         |   50 
-    #   5 6 7  |      6 5 4         |       7 8 9         |
-    #          |                    |                     |
-    #                                (cut by field          (1x7+2x8+3x9)
-    #                                and multiply values) 
-    #   Calculate second value-->---->---->---->---->---->---->---->---->
-    #   <left> | <transposed right> |       <temp>        |   <echo>         
-    # =>1 2 3  |      7 8 9         |       1 2 3         |   50 28
-    #   5 6 7  |    =>6 5 4         |       6 5 4         |
-    #          |                    |                     |
-    #                                (cut by field          (1x6+2x5+3x4)
-    #                                and multiply values) 
-    # 
-    # 
-    #   and so on..
-    #   ---->---->---->---->---->---->---->---->---->---->---->---->---->
+	if [ $? -eq 1 ] # If there is an error caught by addMulInputChecker, return 1.
+	then
+	    return 1
+	else # Implement multiply operation
+	    # Process:
+	    # To begin with, I chose to transpose one of the input matrices (right matrix for this algorithm) to efficiently calculate the sum of multiplied values with bash. 
+	    # First step is transposing right input matrix and put it to a variable.
+	    # Because we should match every row in matrix with every column in another one, we need two loops, one for left, another for transposed right matrix.
+	    # While traversing left matrix and transposed right matrix, we append both lines to a temp file.
+	    # Cut a column by field and multiply values, and add it to total sum.
+	    # Print out the sum in matrix form.
+	    # Repeat this for all rows in left matrix.
+	    #
+	    #   Transpose right matrix-->---->---->---->---->---->
+	    #   <left> |  <right>     <transposed right>
+	    #   1 2 3  |    7 6            7 8 9
+	    #   5 6 7  |    8 5    ->      6 5 4
+	    #          |    9 4
+	    # 
+	    #   Calculate first value--->---->---->---->---->---->---->---->---->
+	    #   <left> | <transposed right> |       <temp>        |   <echo>         
+	    # =>1 2 3  |    =>7 8 9         |       1 2 3         |   50 
+	    #   5 6 7  |      6 5 4         |       7 8 9         |
+	    #          |                    |                     |
+	    #                                (cut by field          (1x7+2x8+3x9)
+	    #                                and multiply values) 
+	    #   Calculate second value-->---->---->---->---->---->---->---->---->
+	    #   <left> | <transposed right> |       <temp>        |   <echo>         
+	    # =>1 2 3  |      7 8 9         |       1 2 3         |   50 28
+	    #   5 6 7  |    =>6 5 4         |       6 5 4         |
+	    #          |                    |                     |
+	    #                                (cut by field          (1x6+2x5+3x4)
+	    #                                and multiply values) 
+	    # 
+	    # 
+	    #   and so on..
+	    #   ---->---->---->---->---->---->---->---->---->---->---->---->---->
 
-    transRightMatrix=$(transpose "$2") # Transpose the right matrix. 
+	    transRightMatrix=$(transpose "$2") # Transpose the right matrix. 
 
-    dimsLeft=$(dims "$1") # Dimensions of left matrix.
-    dimsRight=$(dims "$2") # Dimensions of right matrix.
-    leftColNum=$(echo "$dimsLeft" | cut -d " " -f 2) # Number of columns in left matrix.
-    rightColNum=$(echo "$dimsRight" | cut -d " " -f 2) # Number of columns in right matrix.
+	    dimsLeft=$(dims "$1") # Dimensions of left matrix.
+	    dimsRight=$(dims "$2") # Dimensions of right matrix.
+	    leftColNum=$(echo "$dimsLeft" | cut -d " " -f 2) # Number of columns in left matrix.
+	    rightColNum=$(echo "$dimsRight" | cut -d " " -f 2) # Number of columns in right matrix.
 
-    while read leftLine # Read rows in left matrix.
-    do
-	i=0 # To count the number of columns of transposed right matrix so we can properly put newlines when printing out the result.
-	while read rightLine # Read rows in transposed right matrix.
-	do
-	    ((i++))
-	    temp="tempfile$$" # A temp file to store rows from left and transposed right matrices.
-	    # Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
-	    trap "rm -f $temp; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
-	    
-	    echo "$leftLine" > "$temp" # Append a line from left matrix to temp.
-	    echo "$rightLine" >> "$temp" # Append a line from transposed right matrix to temp.
-
-	    j=0  # To count the number of columns in left matrix for cutting columns in temp file.
-	    sum=0 # The total sum of multiplied values.
-	    while [ "$j" -ne "$leftColNum" ]
+	    while read leftLine # Read rows in left matrix.
 	    do
-		((j++))	
-		leftMatVal=$(cut -f "$j" "$temp" | head -n 1) # Get a single integer value in left matrix.
-		rightMatVal=$(cut -f "$j" "$temp" | tail -n 1) # Get a single integer value in transposed right matrix.
-		mulVal=`expr $leftMatVal \* $rightMatVal` # Multiply two values to be added to total sum.
-		sum=`expr $sum + $mulVal` # Add multiplied value to total sum.
-	    done 
-	    
-	    echo -n "$sum" # Prints out total sum.
-	    
-	    # This is to properly print out the values in matrix form.
-	    if [ "$i" -ne "$rightColNum" ] # Unless it is not the last column,
-	    then
-		echo -ne "\t" # add a tab after the sum.
-	    else # If it is the last column,
-		echo # add a new line.
-	    fi
+		i=0 # To count the number of columns of transposed right matrix so we can properly put newlines when printing out the result.
+		while read rightLine # Read rows in transposed right matrix.
+		do
+		    ((i++))
+		    temp="tempfile$$" # A temp file to store rows from left and transposed right matrices.
+		    # Trap signals of INT, HUP, and TERM when the program is interrupted, and delete a temp file and exit the program.
+		    trap "rm -f $temp; echo 'Program is interrupted. Temp file is deleting and exiting.'; exit 1" INT HUP TERM
+		    
+		    echo "$leftLine" > "$temp" # Append a line from left matrix to temp.
+		    echo "$rightLine" >> "$temp" # Append a line from transposed right matrix to temp.
 
-            rm -f "$temp" # Delete a temp file.
+		    j=0  # To count the number of columns in left matrix for cutting columns in temp file.
+		    sum=0 # The total sum of multiplied values.
+		    while [ "$j" -ne "$leftColNum" ]
+		    do
+			((j++))	
+			leftMatVal=$(cut -f "$j" "$temp" | head -n 1) # Get a single integer value in left matrix.
+			rightMatVal=$(cut -f "$j" "$temp" | tail -n 1) # Get a single integer value in transposed right matrix.
+			mulVal=`expr $leftMatVal \* $rightMatVal` # Multiply two values to be added to total sum.
+			sum=`expr $sum + $mulVal` # Add multiplied value to total sum.
+		    done 
+		    
+		    echo -n "$sum" # Prints out total sum.
+		    
+		    # This is to properly print out the values in matrix form.
+		    if [ "$i" -ne "$rightColNum" ] # Unless it is not the last column,
+		    then
+			echo -ne "\t" # add a tab after the sum.
+		    else # If it is the last column,
+			echo # add a new line.
+		    fi
 
-	done <<<"$transRightMatrix" # Read a string value for transposed right matrix.
-    done <"$1" # Read left matrix.
+		    rm -f "$temp" # Delete a temp file.
 
-    return 0 # Program implemented as desired.
-fi
+		done <<<"$transRightMatrix" # Read a string value for transposed right matrix.
+	    done <"$1" # Read left matrix.
+
+	    return 0 # Program implemented as desired.
+	fi
 }
 
 # Implement an operation with matrix/matrices as arguemnts.
