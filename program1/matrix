@@ -57,6 +57,7 @@ function dims(){
 
 	if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
 	then
+	    rm -f "$datafilepath" # Delete a temp file.
 	    return 1
 	else # Implement dims operation
 	    rowNum=$(wc -l <"$datafilepath") # Count number of lines of input file.
@@ -93,6 +94,7 @@ function transpose(){
 
 	if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
 	then
+	    rm -f "$datafilepath" " $output" # Delete temp files.
 	    return 1
 	else # Implement transpose operation
 	    # Process:
@@ -149,6 +151,7 @@ function mean(){
 
 	if [ $? -eq 1 ] # If there is an error caught by dtmInputChecker, return 1.
 	then
+	    rm -f "$datafilepath" # Delete a temp file.
 	    return 1
 	else # Implement mean operation
 	    # Process:
