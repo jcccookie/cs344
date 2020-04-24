@@ -1,6 +1,7 @@
 #include <stdlib.h> 
 #include <stdio.h> 
 #include <string.h>
+#include <time.h>
 
 // Define constants
 #define ROOM_NUM 10
@@ -18,8 +19,12 @@ struct Room
   char type[11];
 };
 
+// Global array of randomly selected rooms
+struct Room selectedRooms[7];
+
 // Function declarations
 struct Room createRoom(int randomNumber, char* type);
+struct Room getRandomRoom();
 
 int main(int argc, char *argv[])
 {
@@ -48,21 +53,35 @@ int main(int argc, char *argv[])
      exit(1);
    }
 
-  // Using Process ID, generate a random number to randomly choose 7 rooms
-  char pidString[PID_LENGTH+1];
-  sprintf(pidString, "%d", PID);
-  int randomNumber = pidString[PID_LENGTH] - '0';
+  // Generate a random number 
+  srand(time(NULL));
+  int randomNumber = rand() % 10;
   
-  // Create 7 Rooms
-  struct Room startRoom = createRoom(randomNumber++, "START_ROOM");
-  struct Room midRoomOne = createRoom(randomNumber++, "MID_ROOM");
-  struct Room midRoomTwo = createRoom(randomNumber++, "MID_ROOM");
-  struct Room midRoomThree = createRoom(randomNumber++, "MID_ROOM");
-  struct Room midRoomFour = createRoom(randomNumber++, "MID_ROOM");
-  struct Room midRoomFive = createRoom(randomNumber++, "MID_ROOM");
-  struct Room endRoom = createRoom(randomNumber++, "END_ROOM");
+  // Create 7 Rooms and put rooms into array
+  selectedRooms[0] = createRoom(randomNumber++, "START_ROOM");
+  selectedRooms[1] = createRoom(randomNumber++, "END_ROOM");
+  int i;
+  for (i = 2; i < 7; i++)
+  {
+    selectedRooms[i] = createRoom(randomNumber++, "MID_ROOM"); 
+  }
 
+  printf("name: %s, type: %s, num: %d\n", selectedRooms[0].name, selectedRooms[0].type, selectedRooms[0].numOutboundConnections);
+  printf("name: %s, type: %s, num: %d\n", selectedRooms[1].name, selectedRooms[1].type, selectedRooms[1].numOutboundConnections);
+  printf("name: %s, type: %s, num: %d\n", selectedRooms[2].name, selectedRooms[2].type, selectedRooms[2].numOutboundConnections);
+  printf("name: %s, type: %s, num: %d\n", selectedRooms[3].name, selectedRooms[3].type, selectedRooms[3].numOutboundConnections);
+  printf("name: %s, type: %s, num: %d\n", selectedRooms[4].name, selectedRooms[4].type, selectedRooms[4].numOutboundConnections);
+  printf("name: %s, type: %s, num: %d\n", selectedRooms[5].name, selectedRooms[5].type, selectedRooms[5].numOutboundConnections);
+  printf("name: %s, type: %s, num: %d\n", selectedRooms[6].name, selectedRooms[6].type, selectedRooms[6].numOutboundConnections);
+  
 
+  struct Room randomRoom1 = getRandomRoom();
+  struct Room randomRoom2 = getRandomRoom();
+  struct Room randomRoom3 = getRandomRoom();
+
+  printf("RANDOM=>name: %s, type: %s, num: %d\n", randomRoom1.name, randomRoom1.type, randomRoom1.numOutboundConnections);
+  printf("RANDOM=>name: %s, type: %s, num: %d\n", randomRoom2.name, randomRoom2.type, randomRoom2.numOutboundConnections);
+  printf("RANDOM=>name: %s, type: %s, num: %d\n", randomRoom3.name, randomRoom3.type, randomRoom3.numOutboundConnections);
 
   return 0;
 }
@@ -125,10 +144,12 @@ struct Room createRoom(int randomNumber, char* roomType)
 // }
 
 // Returns a random Room, does NOT validate if connection can be added
-// Room GetRandomRoom()
-// {
-  
-// }
+struct Room getRandomRoom()
+{
+  int randomIndex = rand() % 7;
+
+  return selectedRooms[randomIndex];
+}
 
 // Returns true if a connection can be added from Room x (< 6 outbound connections), false otherwise
 // bool CanAddConnectionFrom(Room x) 
