@@ -1,0 +1,15 @@
+#!/bin/bash
+
+function match(){
+    echo "test started.."
+    if [ "$1" == "add" ]
+    then
+	echo "add matched"
+    else
+	echo "NOT matched"
+    fi
+}
+str="add"
+
+echo $str
+echo "Hmm??"
