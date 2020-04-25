@@ -1,12 +1,11 @@
-#include <stdlib.h> 
-#include <stdio.h> 
+#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 
 // Define constants
-#define STATES_NUM 10
-#define STATE_NAME_NUM 2
-#define MAX_ROOM_NUM 7
+#define ROOM_NUM 10
+#define ROOM_NAME_NUM 2
 #define MIN_OUT_NUM 3
 #define MAX_OUT_NUM 6
 
@@ -17,8 +16,8 @@ typedef enum
   true
 } bool;
 
-// 10 room names in array 
-char STATE_NAMES[STATES_NUM][STATE_NAME_NUM+1] = {"ca", "or", "wa", "hi", "nv", "ut", "ny", "nj", "ma", "pa"};
+// 10 room names in array
+char ROOM_NAMES[ROOM_NUM][ROOM_NAME_NUM+1] = {"ca", "or", "wa", "hi", "nv", "ut", "ny", "nj", "ma", "pa"};
 
 // struct for individual room information
 struct Room
@@ -33,20 +32,16 @@ struct Room
 struct Room selectedRooms[7];
 
 // Function declarations
-void shuffleStates(void);
 struct Room createRoom(int randomNumber, char* type);
 bool isGraphFull(void);
 void addRandomConnection(void);
-struct Room* getRandomRoom(void);
+struct Room getRandomRoom(void);
 bool canAddConnectionFrom(struct Room*);
 bool connectionAlreadyExists(struct Room*, struct Room*);
 void connectRoom(struct Room*, struct Room*);
 bool isSameRoom(struct Room*, struct Room*);
 
-void PrintRoomOutboundConnections(struct Room*);
 
-
-// Program starts
 int main(int argc, char *argv[])
 {
   // Get PID and its length
@@ -55,7 +50,7 @@ int main(int argc, char *argv[])
   
   // Set a name of directory
   const char PREFIX[] = "kimkyeon.rooms.";
-  const int PREFIX_LENGTH = strlen(PREFIX); 
+  const int PREFIX_LENGTH = strlen(PREFIX);
 
   // Set size of string for directory name
   const int BUFFER_SIZE = PID_LENGTH + PREFIX_LENGTH;
@@ -65,27 +60,27 @@ int main(int argc, char *argv[])
   sprintf(dirName, "%s%d", PREFIX, PID);
 
   // Create a directory
-  int result = mkdir(dirName, 0755);
+//  int result = mkdir(dirName, 0755);
 
-  // If an error occurs, exit 
-  if (result)
-  {
-    printf("%s", "Directory has not been made!!");
-    exit(1);
-  }
+  // If an error occurs, exit
+//   if (result)
+//   {
+//     printf("%s", "Directory has not been made!!");
+//     exit(1);
+//   }
 
-  srand(time(NULL)); // Generate a seed for random numbers
-  shuffleStates(); // Shuffle list of states
+  // Generate a random number
+  srand(time(NULL));
+  int randomNumber = rand() % ROOM_NUM;
   
   // Create 7 Rooms and put rooms into array
-  selectedRooms[0] = createRoom(0, "START_ROOM");
-  selectedRooms[1] = createRoom(1, "END_ROOM");
+  selectedRooms[0] = createRoom(randomNumber++, "START_ROOM");
+  selectedRooms[1] = createRoom(randomNumber++, "END_ROOM");
   int i;
-  for (i = 2; i < MAX_ROOM_NUM; i++)
+  for (i = 2; i < 7; i++)
   {
-    selectedRooms[i] = createRoom(i, "MID_ROOM"); 
+    selectedRooms[i] = createRoom(randomNumber++, "MID_ROOM");
   }
-
 
   printf("name: %s, type: %s, num: %d\n", selectedRooms[0].name, selectedRooms[0].type, selectedRooms[0].numOutboundConnections);
   printf("name: %s, type: %s, num: %d\n", selectedRooms[1].name, selectedRooms[1].type, selectedRooms[1].numOutboundConnections);
@@ -101,59 +96,31 @@ int main(int argc, char *argv[])
     addRandomConnection();
   }
 
-  int j;
-  for (j = 0; j < 7; j++)
-  {
-    PrintRoomOutboundConnections(&selectedRooms[j]);
-  }
+  printf("The rooms connected to (%s) are:\n", selectedRooms[0].name);
 
+  int j;
+  for (j = 0; j < selectedRooms[0].numOutboundConnections; j++)
+    printf("  (%s)\n", selectedRooms[0].outboundConnections[j]->name);
 
   printf("name: %s, type: %s, num: %d\n", selectedRooms[0].name, selectedRooms[0].type, selectedRooms[0].numOutboundConnections);
   printf("name: %s, type: %s, num: %d\n", selectedRooms[1].name, selectedRooms[1].type, selectedRooms[1].numOutboundConnections);
   printf("name: %s, type: %s, num: %d\n", selectedRooms[2].name, selectedRooms[2].type, selectedRooms[2].numOutboundConnections);
   printf("name: %s, type: %s, num: %d\n", selectedRooms[3].name, selectedRooms[3].type, selectedRooms[3].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[4].name, selectedRooms[4].type, selectedRooms[4].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[5].name, selectedRooms[5].type, selectedRooms[5].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[6].name, selectedRooms[6].type, selectedRooms[6].numOutboundConnections);
 
   return 0;
 }
 
-void PrintRoomOutboundConnections(struct Room* input)
-{
-  printf("The rooms connected to (%s/%d) are:\n",
-         input->name);
-
-  int i;
-  for (i = 0; i < input->numOutboundConnections; i++)
-    printf("  (%s/%d)\n", input->outboundConnections[i]->name);
-  return;
-}
-
-// Shuffle states to be able to randomly pick states
-void shuffleStates()
-{
-    int i;
-    for (i = 0; i < STATES_NUM-1; i++)
-    {
-      int j = rand() % STATES_NUM;
-      char temp[3];
-      strcpy(temp, STATE_NAMES[j]);
-      strcpy(STATE_NAMES[j], STATE_NAMES[i]);
-      strcpy(STATE_NAMES[i], temp);
-    }
-}
-
 // Create a room and initialize data in the room
-// Params: int randomNumber: to select name of room in ROOM_NAMES 
+// Params: int randomNumber: to select name of room in ROOM_NAMES
 //         char* roomType: a type of room
 // Return: struct Room
-struct Room createRoom(int index, char* roomType)
+struct Room createRoom(int randomNumber, char* roomType)
 {
   struct Room room;
   
-  memset(room.name, '\0', STATE_NAME_NUM+1);
-  strcpy(room.name, STATE_NAMES[index]);
+  memset(room.name, '\0', ROOM_NAME_NUM+1);
+  randomNumber = randomNumber % ROOM_NUM; // Mod randomNumber to prevent it from being greater than 9
+  strcpy(room.name, ROOM_NAMES[randomNumber]);
 
   memset(room.type, '\0', 11);
   strcpy(room.type, roomType);
@@ -163,12 +130,13 @@ struct Room createRoom(int index, char* roomType)
   return room;
 }
 
+
 // Returns true if all rooms have 3 to 6 outbound connections, false otherwise
-bool isGraphFull()  
+bool isGraphFull()
 {
   bool isInRange;
   int i;
-  for (i = 0; i < MAX_ROOM_NUM; i++)
+  for (i = 0; i < 7; i++)
   {
     if (selectedRooms[i].numOutboundConnections >= MIN_OUT_NUM && selectedRooms[i].numOutboundConnections <= MAX_OUT_NUM)
     {
@@ -184,31 +152,31 @@ bool isGraphFull()
 }
 
 // Adds a random, valid outbound connection from a Room to another Room
-void addRandomConnection()  
+void addRandomConnection()
 {
-  struct Room* A;
-  struct Room* B;
+  struct Room A;
+  struct Room B;
 
   do
   {
     A = getRandomRoom();
-  } while (canAddConnectionFrom(A) == false);
+  } while (canAddConnectionFrom(&A) == false);
   
   do
   {
     B = getRandomRoom();
   }
-  while (canAddConnectionFrom(B) == false || isSameRoom(A, B) == true || connectionAlreadyExists(A, B) == true);
+  while (canAddConnectionFrom(&B) == false || isSameRoom(&A, &B) == true || connectionAlreadyExists(&A, &B) == true);
   
-  connectRoom(A, B);  
+  connectRoom(&A, &B);
 }
 
 // Returns a random Room, does NOT validate if connection can be added
-struct Room* getRandomRoom()
+struct Room getRandomRoom()
 {
-  int randomIndex = rand() % MAX_ROOM_NUM;
+  int randomIndex = rand() % 7;
 
-  return &selectedRooms[randomIndex];
+  return selectedRooms[randomIndex];
 }
 
 // Returns true if a connection can be added from Room x (< 6 outbound connections), false otherwise
@@ -243,7 +211,7 @@ void connectRoom(struct Room* x, struct Room* y)
 }
 
 // Returns true if Rooms x and y are the same Room, false otherwise
-bool isSameRoom(struct Room* x, struct Room* y) 
+bool isSameRoom(struct Room* x, struct Room* y)
 {
   if (strcmp(x->name, y->name) == 0)
   {
