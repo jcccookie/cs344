@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
   }
 
   srand(time(NULL)); // Generate a seed for random numbers
-  shuffleStates(); // Shuffle list of states
+  shuffleStates(); // Shuffle states in array 
   
   // Create 7 Rooms and put rooms into array
   selectedRooms[0] = createRoom(0, "START_ROOM");
@@ -85,15 +85,6 @@ int main(int argc, char *argv[])
   {
     selectedRooms[i] = createRoom(i, "MID_ROOM"); 
   }
-
-
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[0].name, selectedRooms[0].type, selectedRooms[0].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[1].name, selectedRooms[1].type, selectedRooms[1].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[2].name, selectedRooms[2].type, selectedRooms[2].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[3].name, selectedRooms[3].type, selectedRooms[3].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[4].name, selectedRooms[4].type, selectedRooms[4].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[5].name, selectedRooms[5].type, selectedRooms[5].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[6].name, selectedRooms[6].type, selectedRooms[6].numOutboundConnections);
 
   // Create all connections in graph
   while (isGraphFull() == false)
@@ -107,14 +98,46 @@ int main(int argc, char *argv[])
     PrintRoomOutboundConnections(&selectedRooms[j]);
   }
 
+  // Create room files
+  char filePostFix[6] = "_room"; 
+  int k;
+  for (k = 0; k < MAX_ROOM_NUM; k++)
+  {
+    // Variable for a name of a room file
+    char fileName[strlen(dirName) + STATE_NAME_NUM + strlen(filePostFix) + 2];
 
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[0].name, selectedRooms[0].type, selectedRooms[0].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[1].name, selectedRooms[1].type, selectedRooms[1].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[2].name, selectedRooms[2].type, selectedRooms[2].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[3].name, selectedRooms[3].type, selectedRooms[3].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[4].name, selectedRooms[4].type, selectedRooms[4].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[5].name, selectedRooms[5].type, selectedRooms[5].numOutboundConnections);
-  printf("name: %s, type: %s, num: %d\n", selectedRooms[6].name, selectedRooms[6].type, selectedRooms[6].numOutboundConnections);
+    // Create a name of file with directory location
+    snprintf(fileName, sizeof(fileName), "%s%s%s%s", dirName, "/", selectedRooms[k].name, filePostFix);
+
+    // Create a file in the directory
+    FILE *fp;
+    fp = fopen(fileName, "w");
+
+    // ROOM NAME line
+    char roomName[14];
+    snprintf(roomName, sizeof(roomName), "%s%s", "ROOM NAME: ", selectedRooms[k].name);
+    fputs(roomName, fp);
+    fputs("\n", fp);
+
+    // CONNECTION lines
+    int m;
+    for (m = 0; m < selectedRooms[k].numOutboundConnections; m++)
+    {
+      char connection[17];
+      snprintf(connection, sizeof(connection), "%s%d%s%s", "CONNECTION ", m+1, ": ", selectedRooms[k].outboundConnections[m]);
+      fputs(connection, fp);
+      fputs("\n", fp);
+    }
+
+    // ROOM TYPE line
+    char roomType[22] = "ROOM TYPE: ";
+    snprintf(roomType, sizeof(roomType), "%s%s", "ROOM TYPE: ", selectedRooms[k].type);
+    fputs(roomType, fp);
+    fputs("\n", fp);
+
+    fclose(fp);
+  }
+  
 
   return 0;
 }
@@ -133,19 +156,19 @@ void PrintRoomOutboundConnections(struct Room* input)
 // Shuffle states to be able to randomly pick states
 void shuffleStates()
 {
-    int i;
-    for (i = 0; i < STATES_NUM-1; i++)
-    {
-      int j = rand() % STATES_NUM;
-      char temp[3];
-      strcpy(temp, STATE_NAMES[j]);
-      strcpy(STATE_NAMES[j], STATE_NAMES[i]);
-      strcpy(STATE_NAMES[i], temp);
-    }
+  int i;
+  for (i = 0; i < STATES_NUM-1; i++)
+  {
+    int j = rand() % STATES_NUM;
+    char temp[3];
+    strcpy(temp, STATE_NAMES[j]);
+    strcpy(STATE_NAMES[j], STATE_NAMES[i]);
+    strcpy(STATE_NAMES[i], temp);
+  }
 }
 
 // Create a room and initialize data in the room
-// Params: int randomNumber: to select name of room in ROOM_NAMES 
+// Params: int index: an index of STATE_NAMES 
 //         char* roomType: a type of room
 // Return: struct Room
 struct Room createRoom(int index, char* roomType)
