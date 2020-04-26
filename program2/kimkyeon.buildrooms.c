@@ -43,9 +43,6 @@ bool connectionAlreadyExists(struct Room*, struct Room*);
 void connectRoom(struct Room*, struct Room*);
 bool isSameRoom(struct Room*, struct Room*);
 
-void PrintRoomOutboundConnections(struct Room*);
-
-
 // Program starts
 int main(int argc, char *argv[])
 {
@@ -92,11 +89,13 @@ int main(int argc, char *argv[])
     addRandomConnection();
   }
 
-  int j;
-  for (j = 0; j < 7; j++)
-  {
-    PrintRoomOutboundConnections(&selectedRooms[j]);
-  }
+  //------------------------DELETE LATER------------------------------
+  // int j;
+  // for (j = 0; j < 7; j++)
+  // {
+  //   PrintRoomOutboundConnections(&selectedRooms[j]);
+  // }
+  //------------------------DELETE LATER------------------------------
 
   // Create room files
   char filePostFix[6] = "_room"; 
@@ -113,13 +112,13 @@ int main(int argc, char *argv[])
     FILE *fp;
     fp = fopen(fileName, "w");
 
-    // ROOM NAME line
+    // Create a ROOM NAME line and write it to the file
     char roomName[14];
     snprintf(roomName, sizeof(roomName), "%s%s", "ROOM NAME: ", selectedRooms[k].name);
     fputs(roomName, fp);
     fputs("\n", fp);
 
-    // CONNECTION lines
+    // Create CONNECTION lines and write them to the file
     int m;
     for (m = 0; m < selectedRooms[k].numOutboundConnections; m++)
     {
@@ -129,7 +128,7 @@ int main(int argc, char *argv[])
       fputs("\n", fp);
     }
 
-    // ROOM TYPE line
+    // Create a ROOM TYPE line and write it to the file
     char roomType[22] = "ROOM TYPE: ";
     snprintf(roomType, sizeof(roomType), "%s%s", "ROOM TYPE: ", selectedRooms[k].type);
     fputs(roomType, fp);
@@ -138,10 +137,10 @@ int main(int argc, char *argv[])
     fclose(fp);
   }
   
-
   return 0;
 }
 
+// --------------------------------DELETE LATER-------------------------------------
 void PrintRoomOutboundConnections(struct Room* input)
 {
   printf("The rooms connected to (%s/%d) are:\n",
@@ -152,6 +151,7 @@ void PrintRoomOutboundConnections(struct Room* input)
     printf("  (%s/%d)\n", input->outboundConnections[i]->name);
   return;
 }
+// --------------------------------DELETE LATER-------------------------------------
 
 // Shuffle states to be able to randomly pick states
 void shuffleStates()
