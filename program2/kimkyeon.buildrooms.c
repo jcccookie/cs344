@@ -146,7 +146,7 @@ void assignRooms()
   }
 }
 
-// Create a room and initialize data in the room
+// Create a room and initialize members 
 // Params: int index: an index of STATE_NAMES 
 //         char* roomType: a type of room
 // Return: struct Room

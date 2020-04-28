@@ -22,6 +22,9 @@ struct Room sevenRooms[7];
 char* findNewestDir(void);
 struct Room createRoom();
 void readDataIn(char*);
+void playGame(void);
+struct Room* getRoom(char*);
+void printPossibleConnections(char*);
 
 // Entry point
 int main(int argc, char *argv[])
@@ -35,6 +38,7 @@ int main(int argc, char *argv[])
    // Read data in every file in the directory, and save data to Room structures
    readDataIn(newestDirName);
 
+// --------------------DELETE LATER----------------------------
    int x;
    for (x = 0; x < 7; x++)
    {
@@ -46,6 +50,11 @@ int main(int argc, char *argv[])
       }
       printf("type: %s\n", sevenRooms[x].type);
    }
+// --------------------DELETE LATER----------------------------
+
+   playGame();
+
+
 
    return 0;
 }
@@ -91,7 +100,7 @@ char* findNewestDir()
    return newestDirName;
 }
 
-// Create a Room structure and initialize it
+// Create a Room structure and initialize members
 // Return: struct Room
 struct Room createRoom()
 {
@@ -109,6 +118,7 @@ void readDataIn(char* newestDirName)
 {
    DIR* dirToCheck;
    dirToCheck = opendir(newestDirName); // Open the newest directory
+
    if (dirToCheck > 0)
    {
       char targetFilePostfix[] = "_room"; // Only scan files with this postfix
@@ -169,4 +179,71 @@ void readDataIn(char* newestDirName)
       }
    }
    closedir(dirToCheck);
+}
+
+void playGame()
+{
+   // Find start and end rooms
+   struct Room* startRoom;
+   struct Room* endRoom;
+   startRoom = getRoom("START_ROOM");
+   endRoom = getRoom("END_ROOM");
+
+   printf("Start room is %s, End room is %s\n", startRoom->name, endRoom->name); // --------------------DELETE LATER----------------------------
+
+   // User input
+   char inputBuffer[64];
+   memset(inputBuffer, '\0', sizeof(inputBuffer));
+   strcpy(inputBuffer, startRoom->name);
+
+   do
+   {
+      printf("CURRENT LOCATION: %s\n", inputBuffer);
+      printPossibleConnections(inputBuffer);
+      printf("WHERE TO? >");
+      scanf("%s", &inputBuffer);
+      printf("\n");
+   } while (strcmp(inputBuffer, endRoom->name) != 0);
+
+
+}
+
+// Get a start room
+struct Room* getRoom(char* type)
+{
+   int i;
+   for (i = 0; i < 7; i++)
+   {
+      if (strcmp(sevenRooms[i].type, type) == 0)
+      {
+         return &sevenRooms[i];
+      }
+   }
+}
+
+// Get possible connections of a room and print them out
+void printPossibleConnections(char* inputBuffer)
+{
+   int i;
+   for (i = 0; i < 7; i++)
+   {
+      if (strcmp(sevenRooms[i].name, inputBuffer) == 0)
+      {
+         printf("%s", "POSSIBLE CONNECTIONS: ");
+         int j;
+         for (j = 0; j < sevenRooms[i].numOutboundConnections; j++)
+         {
+            if (j == sevenRooms[i].numOutboundConnections-1)
+            {
+               printf("%s.\n", sevenRooms[i].outboundConnections[j]);
+               break;
+            }
+            else
+            {
+               printf("%s, ", sevenRooms[i].outboundConnections[j]);
+            }
+         }
+         break;
+      }
+   }
 }
