@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
   // If an error occurs, exit 
   if (result)
   {
-    printf("%s", "Directory has not been made!!");
+    printf("Directory has not been made!!\n");
     exit(1);
   }
 

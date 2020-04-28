@@ -6,6 +6,14 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+
+// Define boolean type
+typedef enum
+{
+  false,
+  true
+} bool;
+
 // Structure for individual room information
 struct Room
 {
@@ -23,8 +31,9 @@ char* findNewestDir(void);
 struct Room createRoom();
 void readDataIn(char*);
 void playGame(void);
-struct Room* getRoom(char*);
+struct Room* getRoomWith(char*);
 void printPossibleConnections(char*);
+bool isValidConnection(char*, char*);
 
 // Entry point
 int main(int argc, char *argv[])
@@ -32,6 +41,12 @@ int main(int argc, char *argv[])
    // Find the name of the newest created directory
    char *newestDirName;
    newestDirName = findNewestDir();
+
+   if (newestDirName[0] == '\0')
+   {
+      printf("There's no such directory\n");
+      exit(1);
+   }
 
    printf("newest dir name is %s\n", newestDirName); // --------------------DELETE LATER----------------------------
 
@@ -55,12 +70,11 @@ int main(int argc, char *argv[])
    playGame();
 
 
-
    return 0;
 }
 
 // Find the name of the newest created directory
-// Return: String newestDirName in stack memory
+// Return: char* newestDirName in stack memory
 char* findNewestDir()
 {
    // Find the newest directory
@@ -113,7 +127,8 @@ struct Room createRoom()
    return room;
 }
 
-// Scan every file in the directory, read data line by line, and put data to structures
+// Scan every file in the newest directory, read data line by line, and put data to structures
+// Param: char* newestDirName: the name of the newest directory name
 void readDataIn(char* newestDirName)
 {
    DIR* dirToCheck;
@@ -181,35 +196,52 @@ void readDataIn(char* newestDirName)
    closedir(dirToCheck);
 }
 
+// Interface for a player
 void playGame()
 {
    // Find start and end rooms
    struct Room* startRoom;
    struct Room* endRoom;
-   startRoom = getRoom("START_ROOM");
-   endRoom = getRoom("END_ROOM");
+   startRoom = getRoomWith("START_ROOM");
+   endRoom = getRoomWith("END_ROOM");
 
    printf("Start room is %s, End room is %s\n", startRoom->name, endRoom->name); // --------------------DELETE LATER----------------------------
 
-   // User input
+   // Input buffer
    char inputBuffer[64];
    memset(inputBuffer, '\0', sizeof(inputBuffer));
    strcpy(inputBuffer, startRoom->name);
 
+   // Current room buffer
+   char currentBuffer[64];
+   memset(currentBuffer, '\0', sizeof(currentBuffer));
+
+   // Prompt entry point
    do
    {
-      printf("CURRENT LOCATION: %s\n", inputBuffer);
-      printPossibleConnections(inputBuffer);
+      strcpy(currentBuffer, inputBuffer); // Maintain current input room
+      printf("CURRENT LOCATION: %s\n", currentBuffer);
+      printPossibleConnections(currentBuffer); // Print connections
       printf("WHERE TO? >");
       scanf("%s", &inputBuffer);
       printf("\n");
+
+      // Print error message
+      // Check if the input is valid
+      if (!isValidConnection(currentBuffer, inputBuffer))
+      {
+         printf("HUH? I DON'T UNDERSTAND THAT ROOM. TRY AGAIN.\n\n");
+         strcpy(inputBuffer, currentBuffer); // Recover input value to current room
+      }
    } while (strcmp(inputBuffer, endRoom->name) != 0);
 
 
 }
 
-// Get a start room
-struct Room* getRoom(char* type)
+// Get a room with the type
+// Param: char* type: a type of room to be searched
+// Return: struct Room* 
+struct Room* getRoomWith(char* type)
 {
    int i;
    for (i = 0; i < 7; i++)
@@ -222,12 +254,13 @@ struct Room* getRoom(char* type)
 }
 
 // Get possible connections of a room and print them out
-void printPossibleConnections(char* inputBuffer)
+// Param: char* currentBuffer: a current room
+void printPossibleConnections(char* currentBuffer)
 {
    int i;
    for (i = 0; i < 7; i++)
    {
-      if (strcmp(sevenRooms[i].name, inputBuffer) == 0)
+      if (strcmp(sevenRooms[i].name, currentBuffer) == 0)
       {
          printf("%s", "POSSIBLE CONNECTIONS: ");
          int j;
@@ -246,4 +279,28 @@ void printPossibleConnections(char* inputBuffer)
          break;
       }
    }
+}
+
+// Check if the room input is valid
+// Params: char* currentBuffer: current room
+//         char* inputBuffer: input room an user just typed
+// Return: If the input is a valid connection in a current room, return true. Otherwise, return false
+bool isValidConnection(char* currentBuffer, char* inputBuffer)
+{
+   int i;
+   for (i = 0; i < 7; i++)
+   {
+      if (strcmp(sevenRooms[i].name, currentBuffer) == 0)
+      {
+         int j;
+         for (j = 0; j < sevenRooms[i].numOutboundConnections; j++)
+         {
+            if (strcmp(sevenRooms[i].outboundConnections[j], inputBuffer) == 0)
+            {
+               return true;
+            }
+         }
+      }
+   }
+   return false;
 }
