@@ -20,7 +20,7 @@ typedef enum
 // 10 room names in array 
 char STATE_NAMES[STATES_NUM][STATE_NAME_NUM+1] = {"ca", "or", "wa", "hi", "nv", "ut", "ny", "nj", "ma", "pa"};
 
-// struct for individual room information
+// Structure for individual room information
 struct Room
 {
   char name[3];
@@ -34,7 +34,9 @@ struct Room selectedRooms[7];
 
 // Function declarations
 void shuffleStates(void);
-struct Room createRoom(int randomNumber, char* type);
+struct Room createRoom(int, char*);
+void assignRooms(void);
+void createRoomFiles(char*);
 bool isGraphFull(void);
 void addRandomConnection(void);
 struct Room* getRandomRoom(void);
@@ -43,7 +45,13 @@ bool connectionAlreadyExists(struct Room*, struct Room*);
 void connectRoom(struct Room*, struct Room*);
 bool isSameRoom(struct Room*, struct Room*);
 
-// Program starts
+
+
+void PrintRoomOutboundConnections(struct Room* input); //------------------------DELETE LATER------------------------------
+
+
+
+// Entry point
 int main(int argc, char *argv[])
 {
   // Get PID and its length
@@ -72,16 +80,10 @@ int main(int argc, char *argv[])
   }
 
   srand(time(NULL)); // Generate a seed for random numbers
+
   shuffleStates(); // Shuffle states in array 
   
-  // Create 7 Rooms and put rooms into array
-  selectedRooms[0] = createRoom(0, "START_ROOM");
-  selectedRooms[1] = createRoom(1, "END_ROOM");
-  int i;
-  for (i = 2; i < MAX_ROOM_NUM; i++)
-  {
-    selectedRooms[i] = createRoom(i, "MID_ROOM"); 
-  }
+  assignRooms(); // Assign rooms to structures
 
   // Create all connections in graph
   while (isGraphFull() == false)
@@ -89,23 +91,93 @@ int main(int argc, char *argv[])
     addRandomConnection();
   }
 
-  //------------------------DELETE LATER------------------------------
-  // int j;
-  // for (j = 0; j < 7; j++)
-  // {
-  //   PrintRoomOutboundConnections(&selectedRooms[j]);
-  // }
-  //------------------------DELETE LATER------------------------------
+  // Create 7 files of rooms
+  createRoomFiles(dirName);
 
-  // Create room files
+
+  //------------------------DELETE LATER------------------------------
+  int j;
+  for (j = 0; j < 7; j++)
+  {
+    PrintRoomOutboundConnections(&selectedRooms[j]);
+  }
+  //------------------------DELETE LATER------------------------------
+  
+  return 0;
+}
+
+// --------------------------------DELETE LATER-------------------------------------
+void PrintRoomOutboundConnections(struct Room* input)
+{
+  printf("The rooms connected to (%s/%d) are:\n",
+         input->name);
+
+  int i;
+  for (i = 0; i < input->numOutboundConnections; i++)
+    printf("  (%s/%d)\n", input->outboundConnections[i]->name);
+  return;
+}
+// --------------------------------DELETE LATER-------------------------------------
+
+// Shuffle states in place to be able to randomly pick states
+void shuffleStates()
+{
+  int i;
+  for (i = 0; i < STATES_NUM-1; i++)
+  {
+    int j = rand() % STATES_NUM;
+    char temp[3];
+    strcpy(temp, STATE_NAMES[j]);
+    strcpy(STATE_NAMES[j], STATE_NAMES[i]);
+    strcpy(STATE_NAMES[i], temp);
+  }
+}
+
+// Assign rooms to structure array
+void assignRooms()
+{
+  // Create 7 Rooms structures and put the Rooms into array
+  selectedRooms[0] = createRoom(0, "START_ROOM");
+  selectedRooms[1] = createRoom(1, "END_ROOM");
+  int i;
+  for (i = 2; i < MAX_ROOM_NUM; i++)
+  {
+    selectedRooms[i] = createRoom(i, "MID_ROOM"); 
+  }
+}
+
+// Create a room and initialize data in the room
+// Params: int index: an index of STATE_NAMES 
+//         char* roomType: a type of room
+// Return: struct Room
+struct Room createRoom(int index, char* roomType)
+{
+  struct Room room;
+  
+  memset(room.name, '\0', STATE_NAME_NUM+1);
+  strcpy(room.name, STATE_NAMES[index]);
+
+  memset(room.type, '\0', 11);
+  strcpy(room.type, roomType);
+
+  room.numOutboundConnections = 0;
+
+  return room;
+}
+
+// Create 7 files for rooms
+// Params: String dirName: A variable of directory title
+void createRoomFiles(char* dirName)
+{
   char filePostFix[6] = "_room"; 
+
   int k;
   for (k = 0; k < MAX_ROOM_NUM; k++)
   {
     // Variable for a name of a room file
     char fileName[strlen(dirName) + STATE_NAME_NUM + strlen(filePostFix) + 2];
 
-    // Create a name of file with directory location
+    // Create a path with directory location and name of file
     snprintf(fileName, sizeof(fileName), "%s%s%s%s", dirName, "/", selectedRooms[k].name, filePostFix);
 
     // Create a file in the directory
@@ -129,65 +201,17 @@ int main(int argc, char *argv[])
     }
 
     // Create a ROOM TYPE line and write it to the file
-    char roomType[22] = "ROOM TYPE: ";
+    char roomType[22];
     snprintf(roomType, sizeof(roomType), "%s%s", "ROOM TYPE: ", selectedRooms[k].type);
     fputs(roomType, fp);
     fputs("\n", fp);
 
     fclose(fp);
   }
-  
-  return 0;
-}
-
-// --------------------------------DELETE LATER-------------------------------------
-void PrintRoomOutboundConnections(struct Room* input)
-{
-  printf("The rooms connected to (%s/%d) are:\n",
-         input->name);
-
-  int i;
-  for (i = 0; i < input->numOutboundConnections; i++)
-    printf("  (%s/%d)\n", input->outboundConnections[i]->name);
-  return;
-}
-// --------------------------------DELETE LATER-------------------------------------
-
-// Shuffle states to be able to randomly pick states
-void shuffleStates()
-{
-  int i;
-  for (i = 0; i < STATES_NUM-1; i++)
-  {
-    int j = rand() % STATES_NUM;
-    char temp[3];
-    strcpy(temp, STATE_NAMES[j]);
-    strcpy(STATE_NAMES[j], STATE_NAMES[i]);
-    strcpy(STATE_NAMES[i], temp);
-  }
-}
-
-// Create a room and initialize data in the room
-// Params: int index: an index of STATE_NAMES 
-//         char* roomType: a type of room
-// Return: struct Room
-struct Room createRoom(int index, char* roomType)
-{
-  struct Room room;
-  
-  memset(room.name, '\0', STATE_NAME_NUM+1);
-  strcpy(room.name, STATE_NAMES[index]);
-
-  memset(room.type, '\0', 11);
-  strcpy(room.type, roomType);
-
-  room.numOutboundConnections = 0;
-
-  return room;
 }
 
 // Returns true if all rooms have 3 to 6 outbound connections, false otherwise
-bool isGraphFull()  
+bool isGraphFull() 
 {
   bool isInRange;
   int i;
@@ -195,11 +219,11 @@ bool isGraphFull()
   {
     if (selectedRooms[i].numOutboundConnections >= MIN_OUT_NUM && selectedRooms[i].numOutboundConnections <= MAX_OUT_NUM)
     {
-      isInRange = true;
+      isInRange = true; // If the number of connections is between 3 to 6
     }
     else
     {
-      isInRange = false;
+      isInRange = false; // Otherwise, return false
       break;
     }
   }
