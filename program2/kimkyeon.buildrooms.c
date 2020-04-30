@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 
+
 // Define constants
 #define STATES_NUM 10
 #define STATE_NAME_NUM 2

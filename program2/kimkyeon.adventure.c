@@ -5,7 +5,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <assert.h>
 
+
+// Initialize mutex
+pthread_mutex_t myMutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Define boolean type
 typedef enum
@@ -23,21 +28,22 @@ struct Room
   char type[11];
 };
 
-// Global array containing room info from files
+// Global array containing rooms information from files
 struct Room sevenRooms[7];
 
 // Function declations
 char* findNewestDir(void);
-struct Room createRoom();
+struct Room createRoom(void);
 void readDataIn(char*);
 void playGame(void);
 struct Room* getRoomWith(char*);
-void printPossibleConnections(char*);
+void printLocationAndConnections(char*);
 bool isValidConnection(char*, char*);
 void printCongratulationMessage(char**, int);
 char** createDynamicArray(int);
 void freeDynamicArray(char**, int);
 char** resizePathHistory(char**, int*);
+void* printCurrentTime(void*);
 
 // Entry point
 int main(int argc, char *argv[])
@@ -67,6 +73,7 @@ int main(int argc, char *argv[])
 
    playGame();
 
+   pthread_mutex_destroy(&myMutex);
 
    return 0;
 }
@@ -77,7 +84,7 @@ char* findNewestDir()
 {
    // Find the newest directory
    // Variables for checking the newest room directory
-   static char newestDirName[32];
+   static char newestDirName[32]; // Save the directory name to data segment
    memset(newestDirName, '\0', sizeof(newestDirName));
    int newestDirTime = -1;
    char targetDirPrefix[] = "kimkyeon.rooms."; // Scan file with this prefix
@@ -195,7 +202,7 @@ void readDataIn(char* newestDirName)
 
             fclose(fp);
             i++;
-         }         
+         } 
       }
    }
    closedir(dirToCheck);
@@ -204,6 +211,15 @@ void readDataIn(char* newestDirName)
 // Interface for a player
 void playGame()
 {
+   // Lock mutex to run a main thread only
+   pthread_mutex_lock(&myMutex);
+
+   // Create a time thread
+   pthread_t timeThread;
+   int thread_result;
+   thread_result = pthread_create(&timeThread, NULL, printCurrentTime, NULL);
+   assert(thread_result == 0);
+
    // Find start and end rooms
    struct Room* startRoom;
    struct Room* endRoom;
@@ -232,13 +248,36 @@ void playGame()
    // Loop until user find the end room
    do
    {
+      if (strcmp(inputBuffer, "time") != 0)
+      {
+         strcpy(currentBuffer, inputBuffer); // Maintain current input room
+         printLocationAndConnections(currentBuffer); // Print connections
+      }
       // Play message and input field
-      strcpy(currentBuffer, inputBuffer); // Maintain current input room
-      printf("CURRENT LOCATION: %s\n", currentBuffer);
-      printPossibleConnections(currentBuffer); // Print connections
       printf("WHERE TO? >");
       scanf("%s", &inputBuffer);
       printf("\n");
+
+      // If the input is time, print time and generate a text file
+      if (strcmp(inputBuffer, "time") == 0)
+      {
+         // Unlock the mutex to run a time thread 
+         pthread_mutex_unlock(&myMutex);
+
+         // Block main thread until the time thread is completed
+         int join_result;
+         join_result = pthread_join(timeThread, NULL);
+         assert(join_result == 0);
+
+         // Lock mutex to run a main thread again
+         pthread_mutex_lock(&myMutex); 
+
+         // Recreate a time thread
+         int thread_result;
+         thread_result = pthread_create(&timeThread, NULL, printCurrentTime, NULL);
+         assert(thread_result == 0);
+         continue;
+      }
 
       // Print error message
       // Check if the input is valid
@@ -257,7 +296,6 @@ void playGame()
       {
          pathHistory = resizePathHistory(pathHistory, &numberOfAvailablePath);
       }
-
    } while (strcmp(inputBuffer, endRoom->name) != 0);
 
    // Congratulations message
@@ -284,8 +322,9 @@ struct Room* getRoomWith(char* type)
 
 // Get possible connections of a room and print them out
 // Param: char* currentBuffer: a current room
-void printPossibleConnections(char* currentBuffer)
+void printLocationAndConnections(char* currentBuffer)
 {
+   printf("CURRENT LOCATION: %s\n", currentBuffer);
    int i;
    for (i = 0; i < 7; i++)
    {
@@ -334,10 +373,23 @@ bool isValidConnection(char* currentBuffer, char* inputBuffer)
    return false;
 }
 
+// Print congratulations message
+// Params: char** pathHistory to be printed
+//         int stepCount: the number of paths
 void printCongratulationMessage(char** pathHistory, int stepCount)
 {
+   assert(pathHistory != 0);
    printf("YOU HAVE FOUND THE END ROOM. CONGRATULATIONS!\n");
-   printf("YOU TOOK %d STEPS. YOUR PATH TO VICTORY WAS:\n", stepCount);
+
+   if (stepCount == 1)
+   {
+      printf("YOU TOOK %d STEP. YOUR PATH TO VICTORY WAS:\n", stepCount);
+   }
+   else
+   {
+      printf("YOU TOOK %d STEPS. YOUR PATH TO VICTORY WAS:\n", stepCount);
+   }
+   
    int i;
    for (i = 0; i < stepCount; i++)
    {
@@ -351,6 +403,7 @@ void printCongratulationMessage(char** pathHistory, int stepCount)
 char** createDynamicArray(int size)
 {
    char **temp = (char **)malloc(size * sizeof(char*));
+   assert(temp != 0);
    int i;
    for (i = 0; i < size; i++)
    {
@@ -364,6 +417,7 @@ char** createDynamicArray(int size)
 //         int size: a number of paths
 void freeDynamicArray(char** array, int size)
 {
+   assert(array != 0);
    int i;
    for (i = 0; i < size; i++)
    {
@@ -378,9 +432,11 @@ void freeDynamicArray(char** array, int size)
 // Return: New Dynamic allocated array
 char** resizePathHistory(char** pathHistory, int* numberOfAvailablePath)
 {
+   assert(pathHistory != 0);
    // Create a dynamic array with double capacity
    int newCapacity = *numberOfAvailablePath * 2;
    char **temp = createDynamicArray(newCapacity);
+   assert(temp != 0);
 
    // Copy values from original to temp array
    int i;
@@ -396,3 +452,15 @@ char** resizePathHistory(char** pathHistory, int* numberOfAvailablePath)
 
    return temp;
 }
+
+// Print current time
+void* printCurrentTime(void* argument)
+{
+   pthread_mutex_lock(&myMutex);
+
+   printf("In generateTime(): Do something here.. \n");
+
+   pthread_mutex_unlock(&myMutex);
+
+   return NULL;
+}  
