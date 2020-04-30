@@ -1,8 +1,11 @@
+// Rooms Program
+// This program creates a series of files that hold descrioptions of the in-game rooms and how the rooms are connected
+// Written by Kyeong-nam Kim
+
 #include <stdlib.h> 
 #include <stdio.h> 
 #include <string.h>
 #include <time.h>
-
 
 // Define constants
 #define STATES_NUM 10
@@ -46,12 +49,6 @@ bool connectionAlreadyExists(struct Room*, struct Room*);
 void connectRoom(struct Room*, struct Room*);
 bool isSameRoom(struct Room*, struct Room*);
 
-
-
-void PrintRoomOutboundConnections(struct Room* input); //------------------------DELETE LATER------------------------------
-
-
-
 // Entry point
 int main(int argc, char *argv[])
 {
@@ -94,31 +91,9 @@ int main(int argc, char *argv[])
 
   // Create 7 files of rooms
   createRoomFiles(dirName);
-
-
-  //------------------------DELETE LATER------------------------------
-  int j;
-  for (j = 0; j < 7; j++)
-  {
-    PrintRoomOutboundConnections(&selectedRooms[j]);
-  }
-  //------------------------DELETE LATER------------------------------
   
   return 0;
 }
-
-// --------------------------------DELETE LATER-------------------------------------
-void PrintRoomOutboundConnections(struct Room* input)
-{
-  printf("The rooms connected to (%s/%d) are:\n",
-         input->name);
-
-  int i;
-  for (i = 0; i < input->numOutboundConnections; i++)
-    printf("  (%s/%d)\n", input->outboundConnections[i]->name);
-  return;
-}
-// --------------------------------DELETE LATER-------------------------------------
 
 // Shuffle states in place to be able to randomly pick states
 void shuffleStates()

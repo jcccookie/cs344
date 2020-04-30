@@ -1,3 +1,7 @@
+// Game Program
+// This program provides an interface for playing the game using the most recently generated rooms
+// Written by Kyeong-nam Kim
+
 #include <stdlib.h> 
 #include <stdio.h> 
 #include <string.h>
@@ -54,24 +58,8 @@ int main(int argc, char *argv[])
    char *newestDirName;
    newestDirName = findNewestDir();
 
-   printf("newest dir name is %s\n", newestDirName); // --------------------DELETE LATER----------------------------
-
    // Read data in every file in the directory, and save data to Room structures
    readDataIn(newestDirName);
-
-// --------------------DELETE LATER----------------------------
-   // int x;
-   // for (x = 0; x < 7; x++)
-   // {
-   //    printf("name: %s\n", sevenRooms[x].name);
-   //    int y;
-   //    for (y = 0; y < sevenRooms[x].numOutboundConnections; y++)
-   //    {
-   //       printf("connection: %s\n", sevenRooms[x].outboundConnections[y]);
-   //    }
-   //    printf("type: %s\n", sevenRooms[x].type);
-   // }
-// --------------------DELETE LATER----------------------------
 
    playGame();
 
@@ -227,8 +215,6 @@ void playGame()
    struct Room* endRoom;
    startRoom = getRoomTypeOf("START_ROOM");
    endRoom = getRoomTypeOf("END_ROOM");
-
-   printf("Start room is %s, End room is %s\n", startRoom->name, endRoom->name); // --------------------DELETE LATER----------------------------
 
    // Input buffer
    char inputBuffer[32];
@@ -462,6 +448,7 @@ char** resizePathHistory(char** pathHistory, int* numberOfAvailablePath)
 // This is executed on the time thread, which blocks other thread to access to critical section
 void* createTimeFile(void* argument)
 {
+   // Lock time thread to keep main thread from running this critical section
    pthread_mutex_lock(&myMutex);
 
    time_t rawTime;
@@ -481,6 +468,7 @@ void* createTimeFile(void* argument)
    fputs(timeBuffer, fp);
    fclose(fp);
 
+   // Unlock time thread 
    pthread_mutex_unlock(&myMutex);
 
    return NULL;
@@ -489,6 +477,7 @@ void* createTimeFile(void* argument)
 // Read current time from a text file and print it
 void printCurrentTime()
 {
+   // Buffer for current time
    char *currentTime = NULL;
    size_t bufferSize = 0;
    
