@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <assert.h>
+#include <time.h>
 
 
 // Initialize mutex
@@ -36,14 +37,15 @@ char* findNewestDir(void);
 struct Room createRoom(void);
 void readDataIn(char*);
 void playGame(void);
-struct Room* getRoomWith(char*);
+struct Room* getRoomTypeOf(char*);
 void printLocationAndConnections(char*);
 bool isValidConnection(char*, char*);
 void printCongratulationMessage(char**, int);
 char** createDynamicArray(int);
 void freeDynamicArray(char**, int);
 char** resizePathHistory(char**, int*);
-void* printCurrentTime(void*);
+void* createTimeFile(void*);
+void printCurrentTime(void);
 
 // Entry point
 int main(int argc, char *argv[])
@@ -217,14 +219,14 @@ void playGame()
    // Create a time thread
    pthread_t timeThread;
    int thread_result;
-   thread_result = pthread_create(&timeThread, NULL, printCurrentTime, NULL);
+   thread_result = pthread_create(&timeThread, NULL, createTimeFile, NULL);
    assert(thread_result == 0);
 
    // Find start and end rooms
    struct Room* startRoom;
    struct Room* endRoom;
-   startRoom = getRoomWith("START_ROOM");
-   endRoom = getRoomWith("END_ROOM");
+   startRoom = getRoomTypeOf("START_ROOM");
+   endRoom = getRoomTypeOf("END_ROOM");
 
    printf("Start room is %s, End room is %s\n", startRoom->name, endRoom->name); // --------------------DELETE LATER----------------------------
 
@@ -273,9 +275,12 @@ void playGame()
          pthread_mutex_lock(&myMutex); 
 
          // Recreate a time thread
-         int thread_result;
-         thread_result = pthread_create(&timeThread, NULL, printCurrentTime, NULL);
+         thread_result = pthread_create(&timeThread, NULL, createTimeFile, NULL);
          assert(thread_result == 0);
+
+         // Print current time
+         printCurrentTime();
+
          continue;
       }
 
@@ -308,7 +313,7 @@ void playGame()
 // Get a room with the type
 // Param: char* type: a type of room to be searched
 // Return: struct Room* 
-struct Room* getRoomWith(char* type)
+struct Room* getRoomTypeOf(char* type)
 {
    int i;
    for (i = 0; i < 7; i++)
@@ -453,14 +458,46 @@ char** resizePathHistory(char** pathHistory, int* numberOfAvailablePath)
    return temp;
 }
 
-// Print current time
-void* printCurrentTime(void* argument)
+// Generate a current time and write it to a text file 
+// This is executed on the time thread, which blocks other thread to access to critical section
+void* createTimeFile(void* argument)
 {
    pthread_mutex_lock(&myMutex);
 
-   printf("In generateTime(): Do something here.. \n");
+   time_t rawTime;
+   struct tm *timeInfo;
+   char timeBuffer[50];
+   
+   // Get a raw time information
+   time(&rawTime);
+   timeInfo = localtime(&rawTime);
+
+   // Format time info to display to user
+   strftime(timeBuffer, sizeof(timeBuffer), "%l:%M%P, %A, %B %d, %Y\n", timeInfo);
+
+   // Create a text file and write current time to it
+   FILE* fp;
+   fp = fopen("currentTime.txt", "w+");
+   fputs(timeBuffer, fp);
+   fclose(fp);
 
    pthread_mutex_unlock(&myMutex);
 
    return NULL;
-}  
+} 
+
+// Read current time from a text file and print it
+void printCurrentTime()
+{
+   char *currentTime = NULL;
+   size_t bufferSize = 0;
+   
+   FILE* fp;
+   fp = fopen("currentTime.txt", "r");
+   getline(&currentTime, &bufferSize, fp);
+
+   fclose(fp);
+
+   printf("%s", currentTime);
+   printf("\n");
+}
