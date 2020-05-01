@@ -481,6 +481,7 @@ void printCurrentTime()
    char *currentTime = NULL;
    size_t bufferSize = 0;
    
+   // Read time from a file
    FILE* fp;
    fp = fopen("currentTime.txt", "r");
    getline(&currentTime, &bufferSize, fp);
