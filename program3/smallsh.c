@@ -8,35 +8,88 @@
 
 #define ARGS_LIMIT 513
 
+// Boolean enumerator
 typedef enum
 {
   false,
   true
 } bool;
 
-char* getCommandLine(void);
+int parentPid = -5; // Parent proess id
+int childPid = -5; // Child process id
+bool isForeground = false; // Foreground-only toggle
+bool duringProcess = false; // To track a process status to properly print ':' on prompt when a user type ctrl-z during the process
+int childExitMethod = -5;
 
+// Declare functions
+char* getCommandLine(void);
+void catchSIGCHLD(int);
+void catchSIGINT(int);
+void catchSIGTSTP(int);
+void catchSIGTERM(int);
+void getStatus(int);
+
+// Entry point
 int main(int argc, char *argv[])
 {
    char* line; // A line input from an user
    char* word; // A buffer to store a token of a string
-   char* sourceFile, targetFile;
-   int sourceFD, targetFD, fileResult;
-   bool isInput = false;
-   bool isOutput = false;
-   int stdIn, stdOut;
+
+   char* sourceFile = NULL; // Pointer to source file
+   char* targetFile = NULL; // Pointer to target file
+   int sourceFD, targetFD, fileResult; // File descriptors
+   bool isInput = false; // Boolean for checking if a source file exists
+   bool isOutput = false; // Boolean for checking if a target file exists
+   int stdIn, stdOut; // To restore stdin or stdout after redirection
    
    char* arguments[ARGS_LIMIT]; // An array for arguments
   
-   pid_t spawnPid = -5;
-   int childExitMethod = -5;
-   int status = 0; // Exit or Signal status
+   pid_t spawnPid = -5; // Spawned process id
 
+   // Set SIGCHLD handler
+   struct sigaction SIGCHLD_action = {0};
+   SIGCHLD_action.sa_handler = catchSIGCHLD;
+   sigfillset(&SIGCHLD_action.sa_mask);
+   SIGCHLD_action.sa_flags = SA_RESTART; 
+   sigaction(SIGCHLD, &SIGCHLD_action, NULL);
+
+   // Set SIGINT handler
+   struct sigaction SIGINT_action = {0};
+   SIGINT_action.sa_handler = catchSIGINT;
+   sigfillset(&SIGINT_action.sa_mask);
+   SIGINT_action.sa_flags = SA_RESTART;
+   sigaction(SIGINT, &SIGINT_action, NULL);
+
+   // Set SIGTSTP handler
+   struct sigaction SIGTSTP_action = {0};
+   SIGTSTP_action.sa_handler = catchSIGTSTP;
+   sigfillset(&SIGTSTP_action.sa_mask);
+   SIGTSTP_action.sa_flags = SA_RESTART;
+   sigaction(SIGTSTP, &SIGTSTP_action, NULL);
+
+   // To block SIGTSTP from occuring during the process execution
+   sigset_t new_set, old_set;
+   sigemptyset(&new_set);
+   sigaddset(&new_set, SIGTSTP);
+
+   // Set SIGTERM handler
+   struct sigaction SIGTERM_action = {0};
+   SIGTERM_action.sa_handler = catchSIGTERM;
+   sigfillset(&SIGTERM_action.sa_mask);
+   SIGTERM_action.sa_flags = 0;
+   sigaction(SIGTERM, &SIGTERM_action, NULL);
+   
    while (1)
    {
       int index = 0; // Index of arguments
       line = getCommandLine();
       bool isBackground = false;
+   
+      // Handle commenting out and blank
+      if (line[0] == '#' || line[0] == '\0')
+      {
+         continue;
+      }
 
       // Split a string by space and put it into arguments array
       while ((word = strsep(&line, " ")) != NULL)
@@ -55,6 +108,18 @@ int main(int argc, char *argv[])
             word = strsep(&line, " "); 
             sourceFile = strdup(word);
             isInput = true;
+            continue;
+         }
+         // Convert $$ to pid and save it to arguments
+         else if (strcmp(word, "$$") == 0)
+         {
+            int pid = getpid();
+            int size = sizeof(pid);
+            
+            char* mypid = malloc(size);
+            sprintf(mypid, "%d", pid);
+
+            arguments[index++] = mypid;
             continue;
          }
          // Save a token to arguments array
@@ -79,6 +144,10 @@ int main(int argc, char *argv[])
          // TO DO:
          // Need to clear out all processes and background processes before exit
 
+         if (parentPid != -5)
+         {
+            killpg(parentPid, SIGTERM);
+         }
 
          exit(0);
       }
@@ -94,7 +163,7 @@ int main(int argc, char *argv[])
             
             if (chdir(home) != 0)
             {
-               perror("Wrong home path!\n");
+               perror("Wrong home path!");
             }
          }
          // An argument exists. Directs to the path
@@ -111,7 +180,7 @@ int main(int argc, char *argv[])
             {
                if (chdir(path) != 0)
                {
-                  perror("Wrong path!\n");
+                  perror("Wrong path!");
                }
             }
             // Relative path
@@ -121,7 +190,7 @@ int main(int argc, char *argv[])
 
                if (chdir(relativePath) != 0)
                {
-                  perror("Wrong path!\n");
+                  perror("Wrong path!");
                }
             }
          }
@@ -129,52 +198,87 @@ int main(int argc, char *argv[])
       // Built-in command: status
       else if (strcmp(arguments[0], "status") == 0)
       {
-         // TODO:
-         // Exit status
-         // Terminating signal of the last foreground process
-         // If this is running before any foreground process, return the exit status 0.
+         // Print out status before running any process
          if (childExitMethod == -5)
          {
-            printf("exit value %d\n", status); 
+            printf("exit value %d\n", 0); fflush(stdout);
             continue;
          }
-         
-         // Print out exit status
-         if (WIFEXITED(childExitMethod))
-         {
-            status = WEXITSTATUS(childExitMethod);
-            printf("exit value %d\n", status);
-         }
-         // Print out signal value when terminated by signal
-         else if (WIFSIGNALED(childExitMethod))
-         {
-            status = WTERMSIG(childExitMethod);
-            printf("terminated by signal %d\n", status);
-         }
+
+         getStatus(childExitMethod);
       } 
       // Non built-in commands
       else
       {
          spawnPid = fork();
+         
+         duringProcess = true;
 
+         // Error handling
          if (spawnPid == -1)
          {
             perror("Fork Error\n"); exit(1);
          }
+         // CHILD process
          else if (spawnPid == 0)
          {
+            sigprocmask(SIG_SETMASK, &old_set, NULL); // Unblock SIGTSTP
+
+            // Redirect stdin and stdout to /dev/null for background process 
+            if (isBackground && !isForeground)
+            {
+               if (sourceFile == NULL)
+               {
+                  stdIn = dup(0); // Save stdin descriptor
+
+                  sourceFD = open("/dev/null", O_RDONLY);
+
+                  if (sourceFD == -1) 
+                  {
+                     perror("error: source open()"); exit(1);
+                  }
+
+                  fileResult = dup2(sourceFD, 0);
+                  if (fileResult == -1) 
+                  { 
+                     perror("error: source dup2()"); exit(1); 
+                  }
+
+                  close(sourceFD);
+               }
+               if (targetFile == NULL)
+               {
+                  stdOut = dup(1); // Save stdout descriptor
+
+                  targetFD = open("/dev/null", O_WRONLY, 0644);
+
+                  if (targetFD == -1)
+                  {
+                     perror("error: target open()"); exit(1);
+                  }
+
+                  fileResult = dup2(targetFD, 1);
+                  if (fileResult == -1) 
+                  { 
+                     perror("error: target dup2()"); exit(1); 
+                  }
+
+                  close(targetFD);
+               }
+            }
+
             // Redirect stdin
             if (isInput)
             {
                stdIn = dup(0); // Save stdin descriptor
-               
-               // Read a input file
+
+               // Read input file
                sourceFD = open(sourceFile, O_RDONLY);
+
                if (sourceFD == -1) 
                {
-                  perror("error: source open()\n"); exit(1);
+                  perror("error: source open()"); exit(1);
                }
-
                // Redirects stdin to a file
                fileResult = dup2(sourceFD, 0);
                if (fileResult == -1) 
@@ -194,11 +298,11 @@ int main(int argc, char *argv[])
 
                // Create or write output file
                targetFD = open(targetFile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
                if (targetFD == -1)
                {
-                  perror("error: target open()\n"); exit(1);
+                  perror("error: target open()"); exit(1);
                }
-            
                // Redirects stdout to a file
                fileResult = dup2(targetFD, 1);
                if (fileResult == -1) 
@@ -211,18 +315,46 @@ int main(int argc, char *argv[])
                targetFile = NULL;
             }
 
+            // For background, ignore SIGINT(ctrl + c)
+            if (isBackground && !isForeground)
+            {
+               struct sigaction ignore_action = {0};
+               ignore_action.sa_handler = SIG_IGN;
+               sigaction(SIGINT, &ignore_action, NULL);
+            }
+
+            sigprocmask(SIG_BLOCK, &new_set, &old_set); // Block SIGTSTP
+            
+
             // Execute exec()
             if (execvp(arguments[0], arguments) == -1)
             {
                perror("exec() failed"); exit(1);
             }
-            
-         }
-         
-         waitpid(spawnPid, &childExitMethod, 0);
-      }
 
-      fflush(stdout);
+
+         }
+         // PARENT process
+         else
+         {
+            parentPid = (int)getpid();
+
+            // Let user know background has started
+            if (isBackground && !isForeground)
+            {
+               printf("background pid is %d\n", spawnPid);
+               isBackground = false;
+            }
+            else
+            {
+               childPid = spawnPid; // Save a child's pid to a global variable to catch SIGINT for only in a foreground child process
+               waitpid(spawnPid, &childExitMethod, 0);
+               childPid = -5; // Reset childPid 
+            }
+         }
+      }
+      
+      duringProcess = false;
 
       // Restore stdin and stdout descriptors
       if (isInput)
@@ -250,20 +382,18 @@ int main(int argc, char *argv[])
       line = NULL;
    }
 
-
    return 0;
 }
 
 // Get a command line from a user
-// Return: a string entered by a user with a newline detached
+// Return: a string entered by a user with newline removed
 char* getCommandLine()
 {
    int numCharEntered = -5;
    size_t bufferSize = 0;
    char* lineEntered = NULL;
 
-   printf(": "); 
-   fflush(stdout);
+   printf(": "); fflush(stdout);
 
    numCharEntered = getline(&lineEntered, &bufferSize, stdin);
 
@@ -280,4 +410,96 @@ char* getCommandLine()
    }
 
    return lineEntered;
+}
+
+// Signal handler for SIGCHLD 
+void catchSIGCHLD(int signum)
+{
+   int pid;
+   
+   while ((pid = waitpid(-1, &childExitMethod, WNOHANG)) > 0)
+   {
+      printf("\33[2K\r"); // Erase ":" on prompt before message
+      printf("background pid %d is done: ", pid); fflush(stdout);
+      getStatus(childExitMethod);
+
+      // Print ":" only when the process normally exit not terinated by signal
+      if (WIFEXITED(childExitMethod))
+      {
+         write(STDOUT_FILENO, ": ", 3); fflush(stdout);
+      }
+   }
+}
+
+// Signal handler for SIGINT
+void catchSIGINT(int signum)
+{
+   if (childPid != -5)
+   {
+      waitpid(childPid, &childExitMethod, 0);
+      getStatus(childExitMethod);
+   }
+}
+
+// Signal handler for SIGTSTP 
+void catchSIGTSTP(int signum)
+{
+   int exitMethod;
+
+   if (childPid != -5)
+   {
+      waitpid(childPid, &exitMethod, 0);
+   }
+
+   // Print out an informative message
+   if (!isForeground)
+   {
+      write(STDOUT_FILENO, "\nEntering foreground-only mode (& is now ignored)\n", 50); fflush(stdout);
+   }
+   else
+   {
+      write(STDOUT_FILENO, "\nExiting foreground-only mode\n", 30); fflush(stdout);
+   }
+
+   // Toggle foreground only mode
+   if (isForeground)
+   {
+      isForeground = false;
+   }
+   else
+   {
+      isForeground = true;
+   }
+
+   // If not SIGTSTP occurs during the process printf ":" on prompt
+   if (!duringProcess)
+   {
+      write(STDOUT_FILENO, ": ", 3); fflush(stdout);
+   }
+}
+
+// Print nothing on prompt when parent process is terminated by command 'exit' with children process running in background
+void catchSIGTERM(int signum)
+{
+   return;
+}
+
+// Get a status of exit or signal termination
+// Params: an exit method a child process
+void getStatus(int exitMethod)
+{
+   int status;
+
+   // Print out exit status
+   if (WIFEXITED(exitMethod))
+   {
+      status = WEXITSTATUS(exitMethod);
+      printf("exit value %d\n", status); fflush(stdout);
+   }
+   // Print out signal value when terminated by signal
+   else if (WIFSIGNALED(exitMethod))
+   {
+      status = WTERMSIG(exitMethod);
+      printf("terminated by signal %d\n", status); fflush(stdout);
+   }
 }
