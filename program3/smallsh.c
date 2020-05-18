@@ -18,7 +18,7 @@ typedef enum
 int parentPid = -5; // Parent proess id
 int childPid = -5; // Child process id
 bool isForeground = false; // Foreground-only toggle
-bool duringProcess = false; // To track a process status to properly print ':' on prompt when a user type ctrl-z during the process
+bool duringProcess = false; // To track a process status to properly print ':' on prompt when a user type ctrl-z during the process or block SIGCHLD while parent process is running
 int childExitMethod = -5;
 
 // Declare functions
@@ -67,10 +67,12 @@ int main(int argc, char *argv[])
    SIGTSTP_action.sa_flags = SA_RESTART;
    sigaction(SIGTSTP, &SIGTSTP_action, NULL);
 
-   // To block SIGTSTP from occuring during the process execution
-   sigset_t new_set, old_set;
-   sigemptyset(&new_set);
-   sigaddset(&new_set, SIGTSTP);
+   // To block SIGTSTP, SIGCHLD from occuring during the process execution
+   sigset_t new_stop, old_stop, new_child, old_child;
+   sigemptyset(&new_stop);
+   sigaddset(&new_stop, SIGTSTP);
+   sigemptyset(&new_child);
+   sigaddset(&new_child, SIGCHLD);
 
    // Set SIGTERM handler
    struct sigaction SIGTERM_action = {0};
@@ -122,6 +124,12 @@ int main(int argc, char *argv[])
             arguments[index++] = mypid;
             continue;
          }
+         // Replace $$ with pid and save it into arguments
+         if (strstr(word, "$$") != NULL)
+         {
+            char* temp = malloc()
+            
+         }
          // Save a token to arguments array
          arguments[index++] = strdup(word);
       }
@@ -141,9 +149,7 @@ int main(int argc, char *argv[])
       // Built-in command: exit
       if (strcmp(arguments[0], "exit") == 0)
       {
-         // TO DO:
-         // Need to clear out all processes and background processes before exit
-
+         // Terminate all child process forked from the parent process before exit
          if (parentPid != -5)
          {
             killpg(parentPid, SIGTERM);
@@ -210,6 +216,7 @@ int main(int argc, char *argv[])
       // Non built-in commands
       else
       {
+
          spawnPid = fork();
          
          duringProcess = true;
@@ -222,7 +229,7 @@ int main(int argc, char *argv[])
          // CHILD process
          else if (spawnPid == 0)
          {
-            sigprocmask(SIG_SETMASK, &old_set, NULL); // Unblock SIGTSTP
+            sigprocmask(SIG_SETMASK, &old_stop, NULL); // Unblock SIGTSTP
 
             // Redirect stdin and stdout to /dev/null for background process 
             if (isBackground && !isForeground)
@@ -267,7 +274,7 @@ int main(int argc, char *argv[])
                }
             }
 
-            // Redirect stdin
+            // Redirect stdin if source file exists
             if (isInput)
             {
                stdIn = dup(0); // Save stdin descriptor
@@ -291,7 +298,7 @@ int main(int argc, char *argv[])
                sourceFile = NULL;
             }
 
-            // Redirect stdout
+            // Redirect stdout if target file exists
             if (isOutput)
             {
                stdOut = dup(1); // Save stdout descriptor
@@ -323,16 +330,13 @@ int main(int argc, char *argv[])
                sigaction(SIGINT, &ignore_action, NULL);
             }
 
-            sigprocmask(SIG_BLOCK, &new_set, &old_set); // Block SIGTSTP
+            sigprocmask(SIG_BLOCK, &new_stop, &old_stop); // Block SIGTSTP
             
-
             // Execute exec()
             if (execvp(arguments[0], arguments) == -1)
             {
                perror("exec() failed"); exit(1);
             }
-
-
          }
          // PARENT process
          else
@@ -347,16 +351,22 @@ int main(int argc, char *argv[])
             }
             else
             {
+               sigprocmask(SIG_BLOCK, &new_child, &old_child); // Block SIGCHLD
+
                childPid = spawnPid; // Save a child's pid to a global variable to catch SIGINT for only in a foreground child process
+
                waitpid(spawnPid, &childExitMethod, 0);
+
                childPid = -5; // Reset childPid 
+
+               sigprocmask(SIG_SETMASK, &old_child, NULL); // Unblock SIGCHLD
             }
          }
       }
       
       duringProcess = false;
 
-      // Restore stdin and stdout descriptors
+      // Restore stdin and stdout descriptors to original path
       if (isInput)
       {
          dup2(stdIn, 0);
@@ -419,12 +429,19 @@ void catchSIGCHLD(int signum)
    
    while ((pid = waitpid(-1, &childExitMethod, WNOHANG)) > 0)
    {
-      printf("\33[2K\r"); // Erase ":" on prompt before message
-      printf("background pid %d is done: ", pid); fflush(stdout);
+      int pidLength = sizeof(pid);
+      char pidStr[pidLength+1];
+      sprintf(pidStr, "%d", pid);
+
+      write(STDOUT_FILENO, "\33[2K\r", 6); fflush(stdout); // Remove ":" in prompt
+      write(STDOUT_FILENO, "background pid ", 15); fflush(stdout);
+      write(STDOUT_FILENO, pidStr, pidLength+2); fflush(stdout);
+      write(STDOUT_FILENO, " is done: ", 10); fflush(stdout);
+      
       getStatus(childExitMethod);
 
-      // Print ":" only when the process normally exit not terinated by signal
-      if (WIFEXITED(childExitMethod))
+      // Print ":" only when the process normally exit not terminated by signal and not occuring during process
+      if (WIFEXITED(childExitMethod) && !duringProcess)
       {
          write(STDOUT_FILENO, ": ", 3); fflush(stdout);
       }
@@ -478,7 +495,7 @@ void catchSIGTSTP(int signum)
    }
 }
 
-// Print nothing on prompt when parent process is terminated by command 'exit' with children process running in background
+// Print nothing(not to print 'Killed') in prompt when parent process is terminated by command 'exit' with children process running in background
 void catchSIGTERM(int signum)
 {
    return;
