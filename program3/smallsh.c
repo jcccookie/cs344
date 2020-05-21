@@ -23,17 +23,21 @@ int childExitMethod = -5;
 
 // Declare functions
 char* getCommandLine(void);
+void getStatus(int);
+char* expandPID(char*, char*);
+
+// Signal handlers
 void catchSIGCHLD(int);
 void catchSIGINT(int);
 void catchSIGTSTP(int);
 void catchSIGTERM(int);
-void getStatus(int);
 
 // Entry point
 int main(int argc, char *argv[])
 {
-   char* line; // A line input from an user
-   char* word; // A buffer to store a token of a string
+   char* line = NULL; // A line input from an user
+   char* word = NULL; // A buffer to store a token of a string
+   char* convertedLine = NULL; // An expanded line 
 
    char* sourceFile = NULL; // Pointer to source file
    char* targetFile = NULL; // Pointer to target file
@@ -80,7 +84,12 @@ int main(int argc, char *argv[])
    sigfillset(&SIGTERM_action.sa_mask);
    SIGTERM_action.sa_flags = 0;
    sigaction(SIGTERM, &SIGTERM_action, NULL);
-   
+
+   // Convert PID to a string
+   int pid = getpid();
+   char strPid[100];
+   sprintf(strPid, "%d", pid);
+
    while (1)
    {
       int index = 0; // Index of arguments
@@ -92,14 +101,17 @@ int main(int argc, char *argv[])
       {
          continue;
       }
-
+      
+      // Expand $$ to PID
+      convertedLine = expandPID(line, strPid);
+      
       // Split a string by space and put it into arguments array
-      while ((word = strsep(&line, " ")) != NULL)
+      while ((word = strsep(&convertedLine, " ")) != NULL)
       { 
          // If output file exists, save it to a targetFile
          if (strcmp(word, ">") == 0)
          {
-            word = strsep(&line, " ");
+            word = strsep(&convertedLine, " ");
             targetFile = strdup(word);
             isOutput = true;
             continue;
@@ -107,29 +119,12 @@ int main(int argc, char *argv[])
          // If input file exists, save it to a sourceFile
          else if (strcmp(word, "<") == 0)
          {
-            word = strsep(&line, " "); 
+            word = strsep(&convertedLine, " "); 
             sourceFile = strdup(word);
             isInput = true;
             continue;
          }
-         // Convert $$ to pid and save it to arguments
-         else if (strcmp(word, "$$") == 0)
-         {
-            int pid = getpid();
-            int size = sizeof(pid);
-            
-            char* mypid = malloc(size);
-            sprintf(mypid, "%d", pid);
 
-            arguments[index++] = mypid;
-            continue;
-         }
-         // Replace $$ with pid and save it into arguments
-         if (strstr(word, "$$") != NULL)
-         {
-            char* temp = malloc()
-            
-         }
          // Save a token to arguments array
          arguments[index++] = strdup(word);
       }
@@ -152,7 +147,9 @@ int main(int argc, char *argv[])
          // Terminate all child process forked from the parent process before exit
          if (parentPid != -5)
          {
-            killpg(parentPid, SIGTERM);
+            killpg(getpid(), SIGTERM); // Terminate every child with pgid which is the same with parent's pid
+
+            exit(0);
          }
 
          exit(0);
@@ -169,7 +166,7 @@ int main(int argc, char *argv[])
             
             if (chdir(home) != 0)
             {
-               perror("Wrong home path!");
+               perror("Wrong home path!"); fflush(stdout);
             }
          }
          // An argument exists. Directs to the path
@@ -186,7 +183,7 @@ int main(int argc, char *argv[])
             {
                if (chdir(path) != 0)
                {
-                  perror("Wrong path!");
+                  perror("Wrong path!"); fflush(stdout);
                }
             }
             // Relative path
@@ -196,7 +193,7 @@ int main(int argc, char *argv[])
 
                if (chdir(relativePath) != 0)
                {
-                  perror("Wrong path!");
+                  perror("Wrong path!"); fflush(stdout);
                }
             }
          }
@@ -216,7 +213,6 @@ int main(int argc, char *argv[])
       // Non built-in commands
       else
       {
-
          spawnPid = fork();
          
          duringProcess = true;
@@ -231,7 +227,7 @@ int main(int argc, char *argv[])
          {
             sigprocmask(SIG_SETMASK, &old_stop, NULL); // Unblock SIGTSTP
 
-            // Redirect stdin and stdout to /dev/null for background process 
+            // Redirect stdin and stdout to /dev/null in background process 
             if (isBackground && !isForeground)
             {
                if (sourceFile == NULL)
@@ -239,7 +235,6 @@ int main(int argc, char *argv[])
                   stdIn = dup(0); // Save stdin descriptor
 
                   sourceFD = open("/dev/null", O_RDONLY);
-
                   if (sourceFD == -1) 
                   {
                      perror("error: source open()"); exit(1);
@@ -250,15 +245,14 @@ int main(int argc, char *argv[])
                   { 
                      perror("error: source dup2()"); exit(1); 
                   }
-
-                  close(sourceFD);
+                  // close(sourceFD);
+                  fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
                }
                if (targetFile == NULL)
                {
                   stdOut = dup(1); // Save stdout descriptor
 
                   targetFD = open("/dev/null", O_WRONLY, 0644);
-
                   if (targetFD == -1)
                   {
                      perror("error: target open()"); exit(1);
@@ -269,8 +263,8 @@ int main(int argc, char *argv[])
                   { 
                      perror("error: target dup2()"); exit(1); 
                   }
-
-                  close(targetFD);
+                  // close(targetFD);
+                  fcntl(targetFD, F_SETFD, FD_CLOEXEC);
                }
             }
 
@@ -281,19 +275,19 @@ int main(int argc, char *argv[])
 
                // Read input file
                sourceFD = open(sourceFile, O_RDONLY);
-
                if (sourceFD == -1) 
                {
                   perror("error: source open()"); exit(1);
                }
+
                // Redirects stdin to a file
                fileResult = dup2(sourceFD, 0);
                if (fileResult == -1) 
                { 
                   perror("error: source dup2()"); exit(1); 
                }
-
-               close(sourceFD);
+               // close(sourceFD);
+               fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
                free(sourceFile);
                sourceFile = NULL;
             }
@@ -305,11 +299,11 @@ int main(int argc, char *argv[])
 
                // Create or write output file
                targetFD = open(targetFile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-
                if (targetFD == -1)
                {
                   perror("error: target open()"); exit(1);
                }
+
                // Redirects stdout to a file
                fileResult = dup2(targetFD, 1);
                if (fileResult == -1) 
@@ -317,12 +311,13 @@ int main(int argc, char *argv[])
                   perror("error: target dup2()"); exit(1); 
                }
 
-               close(targetFD);
+               // close(targetFD);
+               fcntl(targetFD, F_SETFD, FD_CLOEXEC);
                free(targetFile);
                targetFile = NULL;
             }
 
-            // For background, ignore SIGINT(ctrl + c)
+            // In background and not foreground only mode, ignore SIGINT(ctrl + c)
             if (isBackground && !isForeground)
             {
                struct sigaction ignore_action = {0};
@@ -330,7 +325,7 @@ int main(int argc, char *argv[])
                sigaction(SIGINT, &ignore_action, NULL);
             }
 
-            sigprocmask(SIG_BLOCK, &new_stop, &old_stop); // Block SIGTSTP
+            sigprocmask(SIG_BLOCK, &new_stop, &old_stop); // Block SIGTSTP before exec()
             
             // Execute exec()
             if (execvp(arguments[0], arguments) == -1)
@@ -351,9 +346,11 @@ int main(int argc, char *argv[])
             }
             else
             {
-               sigprocmask(SIG_BLOCK, &new_child, &old_child); // Block SIGCHLD
+               sigprocmask(SIG_BLOCK, &new_child, &old_child); // Block SIGCHLD during the parent's process execution
 
                childPid = spawnPid; // Save a child's pid to a global variable to catch SIGINT for only in a foreground child process
+
+               setpgid(getpid(), spawnPid); // Set a child's pgid to parent's pid
 
                waitpid(spawnPid, &childExitMethod, 0);
 
@@ -364,8 +361,8 @@ int main(int argc, char *argv[])
          }
       }
       
-      duringProcess = false;
-
+      duringProcess = false; // reset duringProcess
+            
       // Restore stdin and stdout descriptors to original path
       if (isInput)
       {
@@ -387,9 +384,11 @@ int main(int argc, char *argv[])
          free(arguments[j]);
       }
 
-      // Free getline memory 
+      // Free line and convertedLine memory 
       free(line);
       line = NULL;
+      free(convertedLine);
+      convertedLine = NULL;
    }
 
    return 0;
@@ -420,6 +419,77 @@ char* getCommandLine()
    }
 
    return lineEntered;
+}
+
+// Get a status of exit or signal termination
+// Params: an exit method a child process
+void getStatus(int exitMethod)
+{
+   int status;
+
+   // Print out exit status
+   if (WIFEXITED(exitMethod))
+   {
+      status = WEXITSTATUS(exitMethod);
+      printf("exit value %d\n", status); fflush(stdout);
+   }
+   // Print out signal value when terminated by signal
+   else if (WIFSIGNALED(exitMethod))
+   {
+      status = WTERMSIG(exitMethod);
+      printf("terminated by signal %d\n", status); fflush(stdout);
+   }
+}
+
+// Expand $$ to PID
+// Params: string command line to be scanned
+//       : PID number in string form
+// Return: expanded command line
+char* expandPID(char* line, char* strPid) 
+{ 
+   int pidLength = strlen(strPid); // Length of PID
+
+   // Count the number of $$ in command line
+   int countSymbol = 0; 
+   int i;
+   for (i = 0; line[i] != '\0'; i++) 
+   { 
+      if (strstr(&line[i], "$$") == &line[i]) 
+      { 
+         countSymbol++; 
+         i++;
+      } 
+   } 
+
+   int lineLength = strlen(line);
+   // Size of buffer: Length of original command line + (number of $$ * (length of pid - length of $$)) + 1
+   int bufferSize = lineLength + (countSymbol * (pidLength - 2)) + 1; 
+   char* convertedLine = malloc(bufferSize); // Allocate a string with sufficient spaces
+
+   int j;
+   int k = 0; // index of converted line
+   for (j = 0; j < lineLength; j++)
+   {
+      // If find $$, copy PID
+      if (strstr(line, "$$") == line)
+      {
+         strcpy(&convertedLine[k], strPid);
+         k += pidLength;
+         line += 2;
+         j++;
+      }
+      // Otherwise, copy a character from original command line
+      else
+      {
+         strcpy(&convertedLine[k], line);
+         line++;
+         k++;
+      }
+   }
+
+   convertedLine[k] = '\0'; // Set null terminator
+
+   return convertedLine;
 }
 
 // Signal handler for SIGCHLD 
@@ -499,24 +569,4 @@ void catchSIGTSTP(int signum)
 void catchSIGTERM(int signum)
 {
    return;
-}
-
-// Get a status of exit or signal termination
-// Params: an exit method a child process
-void getStatus(int exitMethod)
-{
-   int status;
-
-   // Print out exit status
-   if (WIFEXITED(exitMethod))
-   {
-      status = WEXITSTATUS(exitMethod);
-      printf("exit value %d\n", status); fflush(stdout);
-   }
-   // Print out signal value when terminated by signal
-   else if (WIFSIGNALED(exitMethod))
-   {
-      status = WTERMSIG(exitMethod);
-      printf("terminated by signal %d\n", status); fflush(stdout);
-   }
 }
