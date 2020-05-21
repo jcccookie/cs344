@@ -1,3 +1,9 @@
+// Oregon State University - CS 344 (Operating Systems)
+// Program 3
+// Name: smallsh
+// Author: Kyeong-nam Kim
+
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
