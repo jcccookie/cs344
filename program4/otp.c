@@ -10,16 +10,19 @@
 
 #define MAX_BUF 100000
 
+// Declare functions
 int sendAll(int, char*, int*);
+int receiveAll(int, char*, int*);
 
 void error(const char *msg) { perror(msg); exit(0); } // Error function used for reporting issues
 
 int main(int argc, char *argv[])
 {
-	int socketFD, portNumber, charsRead;
+	int socketFD, portNumber, charsRead, total;
 	struct sockaddr_in serverAddress;
 	struct hostent* serverHostInfo;
 	char cipherText[MAX_BUF];
+	char readBuffer[MAX_BUF];
 
 	// Set up the server address struct
 	memset((char*)&serverAddress, '\0', sizeof(serverAddress)); // Clear out the address struct
@@ -43,7 +46,7 @@ int main(int argc, char *argv[])
 	if (serverHostInfo == NULL) 
     { 
         fprintf(stderr, "CLIENT: ERROR, no such host\n"); 
-        exit(0); 
+        exit(1); 
     }
 	memcpy((char*)serverHostInfo->h_addr, (char*)&serverAddress.sin_addr.s_addr, serverHostInfo->h_length); // Copy in the address
 
@@ -52,12 +55,14 @@ int main(int argc, char *argv[])
 	if (socketFD < 0) 
     {
         perror("CLIENT: ERROR opening socket");
+		exit(1);	
     }
 	
 	// Connect to server
 	if (connect(socketFD, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to address
     {
-        perror("CLIENT: ERROR connecting");
+		fprintf(stderr, "CLIENT: ERROR connecting, port %d\n", portNumber);
+		exit(2);
     }
 
 	// POST
@@ -92,7 +97,7 @@ int main(int argc, char *argv[])
 		memset(cipherText, '\0', sizeof(cipherText));
 		int index = 0;
 
-		// Put post prefix to send buffer
+		// Put post prefix to send buffer (post + username + ciphertext)
 		cipherText[index++] = 'p';
 		cipherText[index++] = ':';
 
@@ -102,9 +107,9 @@ int main(int argc, char *argv[])
 		{
 			cipherText[index++] = argv[2][k++];
 		}
-		cipherText[index++] = ':'; // Delimit user name and cipher text
+		cipherText[index++] = ':'; // Delimit username and ciphertext
 
-		// Encrypt every character and put it to buffer
+		// Encrypt plain text
 		textChar = fgetc(textFile);
 		keyChar = fgetc(keyFile);
 		while (textChar != EOF)
@@ -119,15 +124,18 @@ int main(int argc, char *argv[])
 			// Check if a file contains any bad characters
 			if ((textChar < 65 || textChar > 90) && textChar != 32 && textChar != '\n')
 			{
-				fprintf(stderr, "otp_enc error: input contains bad characters\n");
+				fprintf(stderr, "CLIENT: error: plaintext contains bad characters\n");
 				exit(1)	;
-			}
+ 			}
 
-			cipherChar = ((textChar + keyChar) % 27) + 65; // Encrypt character
-			if (cipherChar == 91) // Handling space
-			{
-				cipherChar = 32;
-			}
+			// If character is space, convert it to ascii 91
+			if (textChar == 32) { textChar += 59; }
+			if (keyChar == 32) { keyChar += 59; }
+
+			cipherChar = ((textChar + keyChar) - 130) % 27; // Encrypt character
+
+			if (cipherChar == 26) { cipherChar = 32; } // Encrypt it to space
+			else { cipherChar += 65; }
 
 			cipherText[index++] = cipherChar; // Put encrypted character to buffer
 
@@ -136,13 +144,25 @@ int main(int argc, char *argv[])
 		}
 		fclose(textFile);
 		fclose(keyFile);
+		
+		// Send size of text
+		int size = strlen(cipherText) - 1;
+		int sizeWritten;
+		char buffer[100];
+		memset(buffer, '\0', sizeof(buffer));
+		sprintf(buffer, "%d", size);
+		sizeWritten = send(socketFD, buffer, sizeof(buffer) - 1, 0);
+		if (sizeWritten < 0)
+		{
+            perror("CLIENT: ERROR size of text");
+			exit(1);
+		}
 
-		int length;
-
-		length = strlen(cipherText) - 1;
-		if (sendAll(socketFD, cipherText, &length) == -1)
+		// Send data (post : username : encrypted text) to server
+		if (sendAll(socketFD, cipherText, &size) == -1)
 		{
 			perror("CLIENT: sendAll error");
+			exit(1);
 		}
 	}
 	// GET
@@ -155,37 +175,118 @@ int main(int argc, char *argv[])
 			exit(1);	
 		}
 
-		// Send user name
-		char userName[500];
-		memset(userName, '\0', sizeof(userName));
+		// Send info (get + username + key)
+		char sendBuffer[500];
+		memset(sendBuffer, '\0', sizeof(sendBuffer));
 		int index = 0;
 		
 		// Put get prefix to send buffer
-		userName[index++] = 'g';
-		userName[index++] = ':';
+		sendBuffer[index++] = 'g';
+		sendBuffer[index++] = ':';
 
-		// Put user name to send buffer
+		// Put sendBuffer to send buffer
 		int k = 0;
 		while (k != strlen(argv[2]))
 		{
-			userName[index++] = argv[2][k++];
+			sendBuffer[index++] = argv[2][k++];
 		}
-		// userName[index++] = ':'; // Delimit user name and cipher text
 
-		printf("CLIENT: username is %s\n", userName);
-
-		int userRead;
-		userRead = send(socketFD, userName, sizeof(userName) - 1, 0);
-		if (userRead < 0) 
+		// Send size of text to server
+		int size = strlen(sendBuffer);
+		int sizeWritten;
+		char buffer[100];
+		memset(buffer, '\0', sizeof(buffer));
+		sprintf(buffer, "%d", size);
+		sizeWritten = send(socketFD, buffer, sizeof(buffer) - 1, 0);
+		if (sizeWritten < 0)
 		{
-			error("ERROR reading from socket");
+            perror("CLIENT: ERROR empty message to server"); 
+			exit(1);
 		}
 
-		// Get return message from server
-		// memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
-		// charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); // Read data from the socket, leaving \0 at end
-		// if (charsRead < 0) error("CLIENT: ERROR reading from socket");
-		// printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
+		// Send get + username
+		int length;
+		length = strlen(sendBuffer);
+		if (sendAll(socketFD, sendBuffer, &length) == -1)
+		{
+			perror("CLIENT: sendAll error");
+			exit(1);
+		}	
+
+		// Receive size of text from server
+		memset(buffer, '\0', MAX_BUF);
+		charsRead = 0;
+		charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0);
+		size = atoi(buffer);
+		if (size <= 0)
+		{
+			perror("CLIENT: ERROR: no message");
+			exit(1);
+		}
+
+		// Receive encrypted data from server
+		charsRead = 0;
+		total = 0;
+		memset(readBuffer, '\0', MAX_BUF);
+		charsRead = receiveAll(socketFD, readBuffer, &size);
+		if (charsRead < 0) 
+		{
+			perror("ERROR reading from socket");
+			exit(1);	
+		}
+
+		// Decrypt ciphertext
+		// Open key file
+		FILE *keyFile;
+		keyFile = fopen(argv[3], "r");
+		if (keyFile == NULL)
+		{
+			fprintf(stderr, "Cannot open text file\n");
+			exit(1);
+		}
+
+		// Decrypt ciphertext and stdout
+		char keyChar, decryptChar;
+		char decryptedBuffer[size];
+		memset(decryptedBuffer, '\0', sizeof(decryptedBuffer));
+		index = 0;
+		keyChar = fgetc(keyFile); // From key file
+		for (index = 0; index < size - 1; index++)
+		{
+			// Check if a file contains any bad characters
+			if ((keyChar < 65 || keyChar > 90) && keyChar != 32 && keyChar != '\n')
+			{
+				fprintf(stderr, "CLIENT: error: key contains bad characters\n");
+				exit(1)	;
+ 			}
+
+			// Convert space to ascii 91
+			if (keyChar == 32) { keyChar += 59; }
+			if (readBuffer[index] == 32) { readBuffer[index] += 59; }
+
+			// If cipher character is less than key
+			decryptChar = readBuffer[index] - keyChar;
+			// -26 ~ -1
+			if (decryptChar < 0)
+			{
+				decryptChar += 27; // 1 ~ 26
+				// When key is space
+				if (decryptChar == 26) { decryptChar = 32; }
+				else { decryptChar += 65; }
+			}
+			// 0 ~ 26
+			else
+			{
+				decryptChar += 65;
+				// Handle space
+				if (decryptChar == 91) { decryptChar = 32; }
+			}
+			decryptedBuffer[index] = decryptChar;
+
+			keyChar = fgetc(keyFile);
+		}
+
+		printf("%s\n", decryptedBuffer);
 	}
 	else
 	{
@@ -205,6 +306,7 @@ int sendAll(int socketFD, char *cipherText, int *length)
 	int total = 0;
 	int bytesleft = *length;
 
+	// Send data until total sent data is less than length of text
 	while (total < *length)
 	{
 		charsWritten = send(socketFD, cipherText + total, bytesleft, 0);
@@ -225,10 +327,39 @@ int sendAll(int socketFD, char *cipherText, int *length)
 		if (checkSend < 0)
 		{
 			perror("ioctl error");  // Check if we actually stopped the loop because of an error
+			exit(1);	
 		} 
 	}
 
 	*length = total;
 
 	return charsWritten == -1 ? -1 : 0;
+}
+
+// Receive all data 
+int receiveAll(int socketFD, char* buffer, int* size)
+{
+	int bytesReceived;
+	int charsRead;
+    int bytesLeft = *size;
+
+	bytesReceived = 0;
+
+	// Loop until buffer receive all data
+	while (bytesLeft)
+	{
+		charsRead = recv(socketFD, buffer, bytesLeft, 0);
+
+		if (charsRead <= 0)
+        {
+            break;
+        }
+
+		bytesReceived += charsRead;
+		bytesLeft -= charsRead;
+
+		buffer += charsRead;
+	}
+
+	return charsRead > 0 ? bytesReceived : charsRead;
 }
