@@ -14,11 +14,9 @@
 int sendAll(int, char*, int*);
 int receiveAll(int, char*, int*);
 
-void error(const char *msg) { perror(msg); exit(0); } // Error function used for reporting issues
-
 int main(int argc, char *argv[])
 {
-	int socketFD, portNumber, charsRead, total;
+	int socketFD, portNumber, charsRead, total, sizeWritten, size, index;
 	struct sockaddr_in serverAddress;
 	struct hostent* serverHostInfo;
 	char cipherText[MAX_BUF];
@@ -36,7 +34,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		fprintf(stderr, "Invalid type of command (post or get)\n");
+		fprintf(stderr, "CLIENT: Invalid type of command (post or get)\n");
 		exit(1);	
 	}
 	
@@ -54,7 +52,7 @@ int main(int argc, char *argv[])
 	socketFD = socket(AF_INET, SOCK_STREAM, 0); // Create the socket
 	if (socketFD < 0) 
     {
-        perror("CLIENT: ERROR opening socket");
+		fprintf(stderr, "CLIENT: ERROR opening socket");
 		exit(1);	
     }
 	
@@ -71,7 +69,7 @@ int main(int argc, char *argv[])
 		// Check number of arguments
 		if (argc != 6)
 		{
-			fprintf(stderr, "Invalid number of arguments\n");
+			fprintf(stderr, "CLIENT: Invalid number of arguments\n");
 			exit(1);	
 		}
 
@@ -83,21 +81,21 @@ int main(int argc, char *argv[])
 		textFile = fopen(argv[3], "r");
 		if (textFile == NULL)
 		{
-			fprintf(stderr, "Cannot open text file\n");
+			fprintf(stderr, "CLIENT: Cannot open text file\n");
 			exit(1);	
 		}
 		keyFile = fopen(argv[4], "r");
 		if (textFile == NULL)
 		{
-			fprintf(stderr, "Cannot open key file\n");
+			fprintf(stderr, "CLIENT: Cannot open key file\n");
 			exit(1);
 		}
 
-		// Initialize send buffer
+		// Initialize send buffer (post:username:ciphertext)
 		memset(cipherText, '\0', sizeof(cipherText));
-		int index = 0;
+		index = 0;
 
-		// Put post prefix to send buffer (post + username + ciphertext)
+		// Put post prefix to send buffer 
 		cipherText[index++] = 'p';
 		cipherText[index++] = ':';
 
@@ -117,15 +115,15 @@ int main(int argc, char *argv[])
 			// Check if key is shorter than text file
 			if (keyChar == EOF)
 			{
-				fprintf(stderr, "Error: key '%s' is too short\n", argv[4]);
+				fprintf(stderr, "CLIENT: ERROR key '%s' is too short\n", argv[4]);
 				exit(1);
 			}
 
 			// Check if a file contains any bad characters
 			if ((textChar < 65 || textChar > 90) && textChar != 32 && textChar != '\n')
 			{
-				fprintf(stderr, "CLIENT: error: plaintext contains bad characters\n");
-				exit(1)	;
+				fprintf(stderr, "CLIENT: ERROR plaintext contains bad characters\n");
+				exit(1);
  			}
 
 			// If character is space, convert it to ascii 91
@@ -146,22 +144,21 @@ int main(int argc, char *argv[])
 		fclose(keyFile);
 		
 		// Send size of text
-		int size = strlen(cipherText) - 1;
-		int sizeWritten;
+		size = strlen(cipherText) - 1;
 		char buffer[100];
 		memset(buffer, '\0', sizeof(buffer));
 		sprintf(buffer, "%d", size);
 		sizeWritten = send(socketFD, buffer, sizeof(buffer) - 1, 0);
 		if (sizeWritten < 0)
 		{
-            perror("CLIENT: ERROR size of text");
+			fprintf(stderr, "CLIENT: ERROR size of text");
 			exit(1);
 		}
 
-		// Send data (post : username : encrypted text) to server
+		// Send data (post:username:encrypted text) to server
 		if (sendAll(socketFD, cipherText, &size) == -1)
 		{
-			perror("CLIENT: sendAll error");
+			fprintf(stderr, "CLIENT: sendAll error");
 			exit(1);
 		}
 	}
@@ -171,20 +168,20 @@ int main(int argc, char *argv[])
 		// Check number of arguments
 		if (argc != 5)
 		{
-			fprintf(stderr, "Invalid number of arguments\n");
+			fprintf(stderr, "CLIENT: Invalid number of arguments\n");
 			exit(1);	
 		}
 
-		// Send info (get + username + key)
+		// Buffer for send info (get:username)
 		char sendBuffer[500];
 		memset(sendBuffer, '\0', sizeof(sendBuffer));
-		int index = 0;
+		index = 0;
 		
-		// Put get prefix to send buffer
+		// Put get prefix to send buffer 
 		sendBuffer[index++] = 'g';
 		sendBuffer[index++] = ':';
 
-		// Put sendBuffer to send buffer
+		// Put username to send buffer
 		int k = 0;
 		while (k != strlen(argv[2]))
 		{
@@ -192,24 +189,21 @@ int main(int argc, char *argv[])
 		}
 
 		// Send size of text to server
-		int size = strlen(sendBuffer);
-		int sizeWritten;
+		size = strlen(sendBuffer);
 		char buffer[100];
 		memset(buffer, '\0', sizeof(buffer));
 		sprintf(buffer, "%d", size);
 		sizeWritten = send(socketFD, buffer, sizeof(buffer) - 1, 0);
 		if (sizeWritten < 0)
 		{
-            perror("CLIENT: ERROR empty message to server"); 
+			fprintf(stderr, "CLIENT: ERROR empty message to server");
 			exit(1);
 		}
 
-		// Send get + username
-		int length;
-		length = strlen(sendBuffer);
-		if (sendAll(socketFD, sendBuffer, &length) == -1)
+		// Send get:username
+		if (sendAll(socketFD, sendBuffer, &size) == -1)
 		{
-			perror("CLIENT: sendAll error");
+			fprintf(stderr, "CLIENT: sendAll error");
 			exit(1);
 		}	
 
@@ -220,7 +214,7 @@ int main(int argc, char *argv[])
 		size = atoi(buffer);
 		if (size <= 0)
 		{
-			perror("CLIENT: ERROR: no message");
+			fprintf(stderr, "CLIENT: ERROR no message");
 			exit(1);
 		}
 
@@ -231,17 +225,16 @@ int main(int argc, char *argv[])
 		charsRead = receiveAll(socketFD, readBuffer, &size);
 		if (charsRead < 0) 
 		{
-			perror("ERROR reading from socket");
+			fprintf(stderr, "CLIENT: ERROR reading from socket");
 			exit(1);	
 		}
 
-		// Decrypt ciphertext
 		// Open key file
 		FILE *keyFile;
 		keyFile = fopen(argv[3], "r");
 		if (keyFile == NULL)
 		{
-			fprintf(stderr, "Cannot open text file\n");
+			fprintf(stderr, "CLIENT: ERROR Cannot open text file\n");
 			exit(1);
 		}
 
@@ -250,13 +243,13 @@ int main(int argc, char *argv[])
 		char decryptedBuffer[size];
 		memset(decryptedBuffer, '\0', sizeof(decryptedBuffer));
 		index = 0;
-		keyChar = fgetc(keyFile); // From key file
+		keyChar = fgetc(keyFile); 
 		for (index = 0; index < size - 1; index++)
 		{
 			// Check if a file contains any bad characters
 			if ((keyChar < 65 || keyChar > 90) && keyChar != 32 && keyChar != '\n')
 			{
-				fprintf(stderr, "CLIENT: error: key contains bad characters\n");
+				fprintf(stderr, "CLIENT: ERROR key contains bad characters\n");
 				exit(1)	;
  			}
 
@@ -290,7 +283,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-    	fprintf(stderr, "Invalid type of command (post or get)\n");
+    	fprintf(stderr, "CLIENT: Invalid type of command (post or get)\n");
 		exit(1);
 	}
 	
@@ -312,7 +305,7 @@ int sendAll(int socketFD, char *cipherText, int *length)
 		charsWritten = send(socketFD, cipherText + total, bytesleft, 0);
 		if (charsWritten < 0)
 		{
-			perror("CLIENT: ERROR writing to socket");
+			fprintf(stderr, "SERVER: ERROR writing to socket");
 			break;
 		}
 		total += charsWritten;
@@ -326,7 +319,7 @@ int sendAll(int socketFD, char *cipherText, int *length)
 		while (checkSend > 0);  // Loop forever until send buffer for this socket is empty
 		if (checkSend < 0)
 		{
-			perror("ioctl error");  // Check if we actually stopped the loop because of an error
+			fprintf(stderr, "SERVER: ioctl error");
 			exit(1);	
 		} 
 	}
@@ -361,5 +354,5 @@ int receiveAll(int socketFD, char* buffer, int* size)
 		buffer += charsRead;
 	}
 
-	return charsRead > 0 ? bytesReceived : charsRead;
+	return charsRead == -1 ? -1 : 0;
 }

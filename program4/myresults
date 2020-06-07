@@ -18,12 +18,12 @@ key20 exists!
 #-----------------------------------------
 #otp post TJ plaintext1 key20 $encport
 ===04=== #10 POINTS: Should return error about too-short key
-Error: key 'key20' is too short
+CLIENT: ERROR key 'key20' is too short
 
 #-----------------------------------------
 #otp post TJ plaintext1 key70000 $encport
 ===05=== #20 POINTS: Should return encrypted version of plaintext1
-LGHUYULWJOMSINOLWRZNTZZIWOISVTOXSGFW
+WZAE TZTLWZITXNNZPBCSMCLVHCXOKXAMIUH
 
 #-----------------------------------------
 #otp post TJ plaintext1 key70000 $encport
@@ -35,18 +35,18 @@ ciphertext1 exists!
 #wc -m plaintext1
 37 plaintext1
 #Should be same: wc -m ciphertext1
-37 /nfs/stak/users/kimkyeon/cs344/program4/TJ_cipherfile174424
+37 /nfs/stak/users/kimkyeon/cs344/program4/TJ_cipherfile313106
 
 #-----------------------------------------
 ===08=== #5 POINTS: ciphertext1 should look encrypted
-LGHUYULWJOMSINOLWRZNTZZIWOISVTOXSGFW
+WZAE TZTLWZITXNNZPBCSMCLVHCXOKXAMIUH
 
 #-----------------------------------------
 #otp_get "Ben" ciphertext1 key70000 $encport
 ===09=== #5 POINTS: Should fail giving error that there are no messages for Ben
-Cannot open text file
-CLIENT: ERROR: no message: Success
-
+SERVER: There's no such file with the user
+SERVER: Cannot open text file
+CLIENT: ERROR no message
 #-----------------------------------------
 ===10=== #20 POINTS: should return decrypted ciphertext1 that matches source
 #cat plaintext1
@@ -69,11 +69,11 @@ plaintext1_a exists!
 ===13=== #20 POINTS: concurrent test of encryption - look for 4 properly-sized ciphertext# files, or 5 where the 5th is 0 bytes
 ===14=== #5 POINTS: Should be only one error about plaintext5 being bad
 #Six second sleep, your program must complete in this time
-CLIENT: error: plaintext contains bad characters
-37 /nfs/stak/users/kimkyeon/cs344/program4/Ben_cipherfile174511
-317 /nfs/stak/users/kimkyeon/cs344/program4/TJ_cipherfile174512
-17 /nfs/stak/users/kimkyeon/cs344/program4/Ryan_cipherfile174513
-69333 /nfs/stak/users/kimkyeon/cs344/program4/Nathan_cipherfile174514
+CLIENT: ERROR plaintext contains bad characters
+37 /nfs/stak/users/kimkyeon/cs344/program4/Ben_cipherfile313460
+17 /nfs/stak/users/kimkyeon/cs344/program4/Ryan_cipherfile313462
+317 /nfs/stak/users/kimkyeon/cs344/program4/TJ_cipherfile313479
+69333 /nfs/stak/users/kimkyeon/cs344/program4/Nathan_cipherfile313480
 #-----------------------------------------
 Waiting for any remaining files
 
@@ -88,10 +88,10 @@ plaintext4_a matches
 
 #-----------------------------------------
 #There should be only one ciphertext file remaining (-1 for each additional file, up to 5)
-/nfs/stak/users/kimkyeon/cs344/program4/TJ_cipherfile174494 exists
+/nfs/stak/users/kimkyeon/cs344/program4/TJ_cipherfile313356 exists
 
 #-----------------------------------------
 #Cleaning up - ignore Operation Not Permitted errors
-./p4gradingscript: line 31: 174349 Terminated              otp_d $encport
+./p4gradingscript: line 31: 313019 Terminated              otp_d $encport
 
 #SCRIPT COMPLETE

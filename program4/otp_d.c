@@ -18,14 +18,15 @@
 int parentPid = -5; // Parent proess id
 int childPid = -5; // Child process id
 int childExitMethod = -5;
+int numChildren = 0;
 
 // Declare functions
-void catchSIGCHLD(int);
 int sendAll(int, char*, int*);
 char* findOldestFile(char*);
 int receiveAll(int, char*, int*);
 
-void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
+// Signal handlers
+void catchSIGCHLD(int);
 
 int main(int argc, char *argv[])
 {
@@ -36,7 +37,7 @@ int main(int argc, char *argv[])
     SIGCHLD_action.sa_flags = SA_RESTART;
     sigaction(SIGCHLD, &SIGCHLD_action, NULL);
 
-	int listenSocketFD, establishedConnectionFD, portNumber, charsRead, i, numChildren, total;
+	int listenSocketFD, establishedConnectionFD, portNumber, charsRead, sizeWritten, total, index, size;
 	socklen_t sizeOfClientInfo;
 	char buffer[MAX_BUF];
     char cipherText[MAX_BUF];
@@ -60,13 +61,13 @@ int main(int argc, char *argv[])
 	listenSocketFD = socket(AF_INET, SOCK_STREAM, 0); // Create the socket
 	if (listenSocketFD < 0)
     {
-        perror("SERVER: ERROR opening socket");
+        fprintf(stderr, "SERVER: ERROR opening socket");
     }
 
 	// Enable the socket to begin listening
 	if (bind(listenSocketFD, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0)
     {
-        perror("SERVER: ERROR on binding"); // Connect socket to port
+        fprintf(stderr, "SERVER: ERROR on binding");
     } 
 
     while (1)
@@ -78,21 +79,17 @@ int main(int argc, char *argv[])
         establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
         if (establishedConnectionFD < 0)
         {
-            perror("SERVER: ERROR on accept");
+            fprintf(stderr, "SERVER: ERROR on accept");
         } 
 
         sleep(2);
 
-        // numChildren++; // Increment number of child process
-        // // Limit number of child processes
-        // while (numChildren >= MAX_CHILD)
-        // {
-        //     int status;
-        //     if (wait(&status) == 0)
-        //     {
-        //         numChildren--;
-        //     }
-        // }
+        // Limit the number of child process to 5
+        numChildren++;
+        if (numChildren >= MAX_CHILD)
+        {
+            continue;
+        }
 
         spawnPid = fork();
          
@@ -100,7 +97,7 @@ int main(int argc, char *argv[])
         if (spawnPid == -1)
         {
             close(establishedConnectionFD);
-            perror("SERVER: Fork Error\n"); 
+            fprintf(stderr, "SERVER: Fork Error\n");
             exit(1);
         }
         // CHILD process
@@ -121,10 +118,8 @@ int main(int argc, char *argv[])
             charsRead = receiveAll(establishedConnectionFD, buffer, &size);
             if (charsRead < 0) 
             {
-                perror("SERVER: ERROR reading from socket");
+                fprintf(stderr, "SERVER: ERROR reading from socket");
             }
-
-            int position = 0; // Position of a token
             
             char* tempBuffer = strdup(buffer);
             char* ptrBuffer = tempBuffer;
@@ -133,7 +128,7 @@ int main(int argc, char *argv[])
             token = strsep(&tempBuffer, ":");
             
             // POST
-            if ((strcmp(token, "p") == 0) && position == 0)
+            if (strcmp(token, "p") == 0)
             {
                 // Buffer for file name to store encrypted text
                 char fileName[100];
@@ -154,25 +149,23 @@ int main(int argc, char *argv[])
                 cipherFile = fopen(fileName, "w+");
                 if (cipherFile == NULL)
                 {
-                    fprintf(stderr, "Cannot open text file\n");
+                    fprintf(stderr, "SERVER: Cannot open text file\n");
                 }
 
                 // Save characters to the file
                 char* encryptedMessage = strsep(&tempBuffer, ":");
-                int pos;
-                for (pos = 0; encryptedMessage[pos] != '\0'; pos++)
+                for (index = 0; encryptedMessage[index] != '\0'; index++)
                 {
-                    fputc(encryptedMessage[pos], cipherFile);
+                    fputc(encryptedMessage[index], cipherFile);
                 }
                 fputc('\n', cipherFile);
 
-                position++;
                 fclose(cipherFile);
                 free(ptrBuffer);
                 exit(0);
             }
             // GET
-            else if ((strcmp(token, "g") == 0) && position == 0)
+            else if (strcmp(token, "g") == 0)
             {
                 char* userName = strsep(&tempBuffer, ":"); // To search a file name with the username
                 char* oldestFileName = findOldestFile(userName); // Find the oldest file
@@ -184,12 +177,12 @@ int main(int argc, char *argv[])
                 cipherFile = fopen(oldestFileName, "r");
                 if (cipherFile == NULL)
                 {
-                    fprintf(stderr, "Cannot open text file\n");
+                    fprintf(stderr, "SERVER: Cannot open text file\n");
                 }
 
                 // Retrieve data from the oldest file
                 memset(cipherText, '\0', sizeof(cipherText));
-                int index = 0;
+                index = 0;
                 cipherChar = fgetc(cipherFile);
                 while (cipherChar != EOF)
                 {
@@ -200,33 +193,30 @@ int main(int argc, char *argv[])
                 fclose(cipherFile);
 
                 // Send size of text to client
-                int size = strlen(cipherText);
-                int sizeWritten;
+                size = strlen(cipherText);
                 char sizeBuffer[100];
                 memset(sizeBuffer, '\0', sizeof(sizeBuffer));
                 sprintf(sizeBuffer, "%d", size);
                 sizeWritten = send(establishedConnectionFD, sizeBuffer, sizeof(sizeBuffer) - 1, 0);
                 if (sizeWritten < 0)
                 {
-                    perror("CLIENT: ERROR size of text");
+                    fprintf(stderr, "SERVER: ERROR size of text");
                 }
 
                 // Send encrypted data to client
-                int length;
-                length = strlen(cipherText) - 1;
-                if (sendAll(establishedConnectionFD, cipherText, &length) == -1)
+                size--;
+                if (sendAll(establishedConnectionFD, cipherText, &size) == -1)
                 {
-                    perror("SERVER: sendAll error");
+                    fprintf(stderr, "SERVER: sendAll error");
                 }
 
                 // Remove ciphertext file
                 if (remove(oldestFileName) != 0)
                 { 
-                    perror("File doesn't exist");
+                    fprintf(stderr, "SERVER: File doesn't exist");
                 }
                 
                 free(ptrBuffer);
-                position++;
                 exit(0);
             }
         }
@@ -242,12 +232,6 @@ int main(int argc, char *argv[])
 	return 0; 
 }
 
-// Signal handler for SIGCHLD 
-void catchSIGCHLD(int signum)
-{
-   waitpid(-1, &childExitMethod, WNOHANG);
-}
-
 // Send all data (reference by https://beej.us/) 
 int sendAll(int socketFD, char *cipherText, int *length)
 {
@@ -261,7 +245,7 @@ int sendAll(int socketFD, char *cipherText, int *length)
 		charsWritten = send(socketFD, cipherText + total, bytesleft, 0);
 		if (charsWritten < 0)
 		{
-			perror("CLIENT: ERROR writing to socket");
+            fprintf(stderr, "SERVER: ERROR writing to socket");
 			break;
 		}
 		total += charsWritten;
@@ -275,7 +259,7 @@ int sendAll(int socketFD, char *cipherText, int *length)
 		while (checkSend > 0);  // Loop forever until send buffer for this socket is empty
 		if (checkSend < 0)
 		{
-			perror("ioctl error");  // Check if we actually stopped the loop because of an error
+            fprintf(stderr, "SERVER: ioctl error");
 		} 
 	}
 
@@ -323,7 +307,7 @@ char* findOldestFile(char* userName)
    // If there's no directory to search
    if (oldestFileName[0] == '\0')
    {
-      printf("There's no such file with the user\n");
+      fprintf(stderr, "SERVER: There's no such file with the user\n");
    }
 
    return oldestFileName;
@@ -354,5 +338,12 @@ int receiveAll(int socketFD, char* buffer, int* size)
 		buffer += charsRead;
 	}
 
-	return charsRead > 0 ? bytesReceived : charsRead;
+    return charsRead == -1 ? -1 : 0;
+}
+
+// Signal handler for SIGCHLD 
+void catchSIGCHLD(int signum)
+{
+    numChildren--; // Decrement the number of child process after terminated
+    waitpid(-1, &childExitMethod, WNOHANG);
 }

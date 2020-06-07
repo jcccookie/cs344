@@ -23,7 +23,7 @@ CLIENT: ERROR key 'key20' is too short
 #-----------------------------------------
 #otp post TJ plaintext1 key70000 $encport
 ===05=== #20 POINTS: Should return encrypted version of plaintext1
-TTRA  MPEHVRYDVKTTHXWVLLLPUCXKKFHMKC
+ILZWGGTPDHK MWDZTLGNMPK QPUFMM KQUVD
 
 #-----------------------------------------
 #otp post TJ plaintext1 key70000 $encport
@@ -35,11 +35,11 @@ ciphertext1 exists!
 #wc -m plaintext1
 37 plaintext1
 #Should be same: wc -m ciphertext1
-37 /nfs/stak/users/kimkyeon/cs344/program4/TJ_cipherfile15404
+37 /nfs/stak/users/kimkyeon/cs344/program4/TJ_cipherfile22446
 
 #-----------------------------------------
 ===08=== #5 POINTS: ciphertext1 should look encrypted
-TTRA  MPEHVRYDVKTTHXWVLLLPUCXKKFHMKC
+ILZWGGTPDHK MWDZTLGNMPK QPUFMM KQUVD
 
 #-----------------------------------------
 #otp_get "Ben" ciphertext1 key70000 $encport
@@ -70,10 +70,10 @@ plaintext1_a exists!
 ===14=== #5 POINTS: Should be only one error about plaintext5 being bad
 #Six second sleep, your program must complete in this time
 CLIENT: ERROR plaintext contains bad characters
-317 /nfs/stak/users/kimkyeon/cs344/program4/TJ_cipherfile15498
-37 /nfs/stak/users/kimkyeon/cs344/program4/Ben_cipherfile15499
-17 /nfs/stak/users/kimkyeon/cs344/program4/Ryan_cipherfile15500
-69333 /nfs/stak/users/kimkyeon/cs344/program4/Nathan_cipherfile15501
+37 /nfs/stak/users/kimkyeon/cs344/program4/Ben_cipherfile22581
+317 /nfs/stak/users/kimkyeon/cs344/program4/TJ_cipherfile22582
+69333 /nfs/stak/users/kimkyeon/cs344/program4/Nathan_cipherfile22584
+17 /nfs/stak/users/kimkyeon/cs344/program4/Ryan_cipherfile22588
 #-----------------------------------------
 Waiting for any remaining files
 
@@ -88,10 +88,10 @@ plaintext4_a matches
 
 #-----------------------------------------
 #There should be only one ciphertext file remaining (-1 for each additional file, up to 5)
-/nfs/stak/users/kimkyeon/cs344/program4/TJ_cipherfile15480 exists
+/nfs/stak/users/kimkyeon/cs344/program4/TJ_cipherfile22561 exists
 
 #-----------------------------------------
 #Cleaning up - ignore Operation Not Permitted errors
-./p4gradingscript: line 31: 14909 Terminated              otp_d $encport
+./p4gradingscript: line 31: 22296 Terminated              otp_d $encport
 
 #SCRIPT COMPLETE
